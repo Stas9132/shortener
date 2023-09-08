@@ -44,6 +44,8 @@ func Test_getHash(t *testing.T) {
 
 func TestMainHandler(t *testing.T) {
 	mem := make(map[string]string)
+	srv := httptest.NewServer(http.HandlerFunc(MainHandler))
+	defer srv.Close()
 	type args struct {
 		method string
 		path   string
@@ -74,8 +76,6 @@ func TestMainHandler(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			srv := httptest.NewServer(http.HandlerFunc(MainHandler))
-			defer srv.Close()
 			if _, err := strconv.Atoi(tt.args.path); err == nil {
 				tt.args.path = mem[tt.args.path]
 			}
@@ -95,7 +95,7 @@ func TestMainHandler(t *testing.T) {
 			assert.Equal(t, tt.wantStatus, resp.StatusCode)
 			b, err := io.ReadAll(resp.Body)
 			require.NoError(t, err)
-			m := regexp.MustCompile(".*//.*/(\\w{8})").FindSubmatch(b)
+			m := regexp.MustCompile(`.*//.*/(\w{8})`).FindSubmatch(b)
 			if len(m) == 2 {
 				assert.Equal(t, tt.wantBody, m[1])
 				mem[tt.memSlot] = "/" + string(m[1])
