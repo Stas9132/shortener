@@ -6,6 +6,7 @@ on:
   push:
     branches: # здесь говорите, что хотите применять workflows и для пушей в main-ветку
       - iter1
+      - iter2
 # каждый workflows представляет собой набор джоб,
 # которые выполняются последовательно или параллельно,
 # для каждой джобы можно задать докер-образ, в котором будут выполняться шаги (steps),
@@ -58,6 +59,9 @@ jobs:
         run: |
           chmod -R +x $GITHUB_WORKSPACE/.tools/shortenertest
           mv $GITHUB_WORKSPACE/.tools/shortenertest /usr/local/bin/shortenertest
+      - name: Run tests
+        run: |
+          go test ./... -v
       - name: Build shortener
         run: |
           go build -o shortener cmd/shortener/main.go
