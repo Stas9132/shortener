@@ -1,4 +1,4 @@
-name: go vet test # название workflows
+name: user tests # название workflows
 # если вы хотите настроить автоматическое применение workflows в зависимости от условий,
 # то используйте ключевое слово on
 on:
@@ -60,7 +60,7 @@ jobs:
           mv $GITHUB_WORKSPACE/.tools/shortenertest /usr/local/bin/shortenertest
       - name: Build shortener
         run: |
-          go build -o shortener cmd/server/main.go
+          go build -o shortener cmd/shortener/main.go
       - name: Run shortenertest
         run: |
           shortenertest -test.v -test.run=^TestIteration1$ -binary-path=./shortener
