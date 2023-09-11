@@ -111,3 +111,88 @@ func TestMainHandler(t *testing.T) {
 		})
 	}
 }
+
+func TestMainPage(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(MainPage))
+	defer srv.Close()
+	type args struct {
+		body io.Reader
+	}
+	tests := []struct {
+		name       string
+		args       args
+		wantStatus int
+	}{{
+		name:       "Success POST",
+		args:       args{body: strings.NewReader("https://go.dev/")},
+		wantStatus: http.StatusCreated,
+	}, {
+		name:       "Success2 POST",
+		args:       args{body: strings.NewReader("https://yandex.ru/")},
+		wantStatus: http.StatusCreated,
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp, err := http.Post(srv.URL, "text/plain", tt.args.body)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+			assert.Equal(t, tt.wantStatus, resp.StatusCode)
+			b, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			m := regexp.MustCompile(`.*//.*/(\w{8})`).FindSubmatch(b)
+			require.Equal(t, len(m), 2, string(b))
+			_, ok := storage()[string(m[1])]
+			assert.True(t, ok)
+		})
+	}
+}
+
+func TestGetByShortName(t *testing.T) {
+	r := chi.NewRouter()
+	r.Get("/{sn}", GetByShortName)
+	srv := httptest.NewServer(r)
+	defer srv.Close()
+	storage()["1"] = []byte("https://go.dev/")
+	type args struct {
+		path string
+		body io.Reader
+	}
+	tests := []struct {
+		name       string
+		args       args
+		memSlot    string
+		wantStatus int
+		wantBody   []byte
+	}{{
+		name:       "Success GET",
+		args:       args{path: "/1", body: nil},
+		wantStatus: http.StatusTemporaryRedirect,
+		wantBody:   []byte("https://go.dev/"),
+	}, {
+		name:       "Wrong GET",
+		args:       args{path: "/0", body: nil},
+		wantStatus: http.StatusBadRequest,
+		wantBody:   []byte{0x30, 0x0a},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodGet, srv.URL+tt.args.path, tt.args.body)
+			require.NoError(t, err)
+			cl := http.Client{
+				Transport: nil,
+				CheckRedirect: func(req *http.Request, via []*http.Request) error {
+					return http.ErrUseLastResponse
+				},
+				Jar:     nil,
+				Timeout: 0,
+			}
+			resp, err := cl.Do(req)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+			assert.Equal(t, tt.wantStatus, resp.StatusCode)
+			b, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			assert.Equal(t, b, tt.wantBody)
+		})
+	}
+}
