@@ -6,6 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
+	"shortener/config"
 	"sync"
 )
 
@@ -35,7 +36,7 @@ func MainPage(w http.ResponseWriter, r *http.Request) {
 	h := getHash(b)
 	storage()[h] = b
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte("http://" + r.Host + "/" + h))
+	w.Write([]byte(*config.ResponsePrefix + h))
 }
 
 func GetByShortName(w http.ResponseWriter, r *http.Request) {

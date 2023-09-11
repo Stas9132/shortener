@@ -3,11 +3,14 @@ package main
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"log"
 	"net/http"
+	"shortener/config"
 	"shortener/internal/app/handlers"
 )
 
 func main() {
+	config.InitConfig()
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 
@@ -16,7 +19,8 @@ func main() {
 	r.NotFound(handlers.Default)
 	r.MethodNotAllowed(handlers.Default)
 
-	err := http.ListenAndServe(":8080", r)
+	log.Println("Starting server on", *config.ServerAddress)
+	err := http.ListenAndServe(*config.ServerAddress, r)
 	if err != nil {
 		panic(err)
 	}
