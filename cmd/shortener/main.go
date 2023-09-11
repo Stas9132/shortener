@@ -1,15 +1,20 @@
 package main
 
 import (
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"net/http"
 	"shortener/internal/app/handlers"
 )
 
 func main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", handlers.MainHandler)
+	r := chi.NewRouter()
+	r.Use(middleware.Logger)
 
-	err := http.ListenAndServe(":8080", mux)
+	r.Post("/", handlers.MainPage)
+	r.Get("/{sn}", handlers.GetByShortName)
+
+	err := http.ListenAndServe(":8080", r)
 	if err != nil {
 		panic(err)
 	}
