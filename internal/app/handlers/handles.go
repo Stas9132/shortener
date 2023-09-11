@@ -6,7 +6,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
-	"path"
 	"sync"
 )
 
@@ -22,6 +21,11 @@ func getHash(b []byte) string {
 	}
 	return hex.EncodeToString(d)
 }
+
+func Default(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusBadRequest)
+}
+
 func MainPage(w http.ResponseWriter, r *http.Request) {
 	b, e := io.ReadAll(r.Body)
 	if e != nil {
@@ -44,33 +48,4 @@ func GetByShortName(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Location", string(b))
 	w.WriteHeader(http.StatusTemporaryRedirect)
 	w.Write(b)
-}
-
-func MainHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost &&
-		r.URL.Path == "/" {
-		b, e := io.ReadAll(r.Body)
-		if e != nil {
-			http.Error(w, e.Error(), http.StatusBadRequest)
-			return
-		}
-		h := getHash(b)
-		storage()[h] = b
-		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte("http://" + r.Host + "/" + h))
-		return
-	} else if d, f := path.Split(r.URL.Path); r.Method == http.MethodGet &&
-		d == "/" && f != "" {
-		b, ok := storage()[f]
-		if !ok {
-			http.Error(w, f, http.StatusBadRequest)
-			return
-		}
-		w.Header().Set("Location", string(b))
-		w.WriteHeader(http.StatusTemporaryRedirect)
-		w.Write(b)
-		return
-	}
-
-	w.WriteHeader(http.StatusBadRequest)
 }

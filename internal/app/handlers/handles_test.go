@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -44,7 +45,12 @@ func Test_getHash(t *testing.T) {
 
 func TestMainHandler(t *testing.T) {
 	mem := make(map[string]string)
-	srv := httptest.NewServer(http.HandlerFunc(MainHandler))
+	r := chi.NewRouter()
+	r.Post("/", MainPage)
+	r.Get("/{sn}", GetByShortName)
+	r.NotFound(Default)
+	r.MethodNotAllowed(Default)
+	srv := httptest.NewServer(r)
 	defer srv.Close()
 	type args struct {
 		method string

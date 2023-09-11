@@ -13,6 +13,8 @@ func main() {
 
 	r.Post("/", handlers.MainPage)
 	r.Get("/{sn}", handlers.GetByShortName)
+	r.NotFound(handlers.Default)
+	r.MethodNotAllowed(handlers.Default)
 
 	err := http.ListenAndServe(":8080", r)
 	if err != nil {
