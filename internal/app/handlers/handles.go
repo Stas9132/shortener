@@ -32,7 +32,6 @@ func MainPage(w http.ResponseWriter, r *http.Request) {
 	storage()[h] = b
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte("http://" + r.Host + "/" + h))
-	return
 }
 
 func GetByShortName(w http.ResponseWriter, r *http.Request) {
@@ -45,7 +44,6 @@ func GetByShortName(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Location", string(b))
 	w.WriteHeader(http.StatusTemporaryRedirect)
 	w.Write(b)
-	return
 }
 
 func MainHandler(w http.ResponseWriter, r *http.Request) {
