@@ -13,6 +13,11 @@ import (
 	"testing"
 )
 
+var _ = func() bool {
+	testing.Init()
+	return true
+}()
+
 func Test_getHash(t *testing.T) {
 	type args struct {
 		b []byte
