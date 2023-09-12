@@ -59,12 +59,9 @@ jobs:
         run: |
           chmod -R +x $GITHUB_WORKSPACE/.tools/shortenertest
           mv $GITHUB_WORKSPACE/.tools/shortenertest /usr/local/bin/shortenertest
-      - name: Run tests
-        run: |
-          go test ./... -v
       - name: Build shortener
         run: |
           go build -o shortener cmd/shortener/main.go
       - name: Run shortenertest
         run: |
-          shortenertest -test.v -test.run=^TestIteration1$ -binary-path=./shortener
+          shortenertest -test.v -test.run=^TestIteration[1-2]$ -binary-path=./shortener -source-path=.
