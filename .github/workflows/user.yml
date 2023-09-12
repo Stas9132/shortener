@@ -65,4 +65,4 @@ jobs:
           go build -o shortener cmd/shortener/main.go
       - name: Run shortenertest
         run: |
-          shortenertest -test.v -test.run=^TestIteration[1-2]$ -binary-path=./shortener -source-path=.
+          shortenertest -test.v -test.run=^TestIteration[1-3]$ -binary-path=./shortener -source-path=.
