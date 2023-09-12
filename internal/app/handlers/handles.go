@@ -3,7 +3,9 @@ package handlers
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/render"
 	"io"
 	"net/http"
 	"shortener/config"
@@ -37,6 +39,27 @@ func MainPage(w http.ResponseWriter, r *http.Request) {
 	storage()[h] = b
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(*config.ResponsePrefix + h))
+}
+
+func JSONHandler(w http.ResponseWriter, r *http.Request) {
+	var request struct {
+		URL string `json:"url"`
+	}
+	var response struct {
+		Result string `json:"result"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	response.Result = getHash([]byte(request.URL))
+	storage()[response.Result] = []byte(request.URL)
+	response.Result = *config.ResponsePrefix + response.Result
+	render.Status(r, http.StatusCreated)
+	render.JSON(w, r, response)
 }
 
 func GetByShortName(w http.ResponseWriter, r *http.Request) {

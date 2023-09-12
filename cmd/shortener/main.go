@@ -20,6 +20,7 @@ func main() {
 
 	r.Post("/", handlers.MainPage)
 	r.Get("/{sn}", handlers.GetByShortName)
+	r.Post("/api/shorten", handlers.JSONHandler)
 	r.NotFound(handlers.Default)
 	r.MethodNotAllowed(handlers.Default)
 
