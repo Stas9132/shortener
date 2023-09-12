@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"log"
@@ -11,9 +10,7 @@ import (
 )
 
 func main() {
-	config.ServerAddress = flag.String("a", "localhost:8080", "Address of http server")
-	config.ResponsePrefix = flag.String("b", "http://localhost:8080/", "Response prefix")
-	flag.Parse()
+	config.InitConfig()
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)

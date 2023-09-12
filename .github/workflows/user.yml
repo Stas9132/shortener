@@ -9,6 +9,7 @@ on:
       - iter2
       - iter3
       - iter4
+      - iter5
 # каждый workflows представляет собой набор джоб,
 # которые выполняются последовательно или параллельно,
 # для каждой джобы можно задать докер-образ, в котором будут выполняться шаги (steps),
@@ -66,4 +67,4 @@ jobs:
           go build -o shortener cmd/shortener/main.go
       - name: Run shortenertest
         run: |
-          shortenertest -test.v -test.run=^TestIteration[1-4]$ -binary-path=./shortener -source-path=.
+          shortenertest -test.v -test.run=^TestIteration[1-5]$ -binary-path=./shortener -source-path=. -server-port=8081 -server-base-url=http://localhost:8081/

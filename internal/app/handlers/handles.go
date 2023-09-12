@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/render"
 	"io"
 	"net/http"
+	"net/url"
 	"shortener/config"
 	"sync"
 )
@@ -37,8 +38,9 @@ func MainPage(w http.ResponseWriter, r *http.Request) {
 	}
 	h := getHash(b)
 	storage()[h] = b
+	u, _ := url.JoinPath(*config.BaseURL, h)
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(*config.ResponsePrefix + h))
+	w.Write([]byte(u))
 }
 
 func JSONHandler(w http.ResponseWriter, r *http.Request) {
@@ -55,9 +57,9 @@ func JSONHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	response.Result = getHash([]byte(request.URL))
-	storage()[response.Result] = []byte(request.URL)
-	response.Result = *config.ResponsePrefix + response.Result
+	h := getHash([]byte(request.URL))
+	storage()[h] = []byte(request.URL)
+	response.Result, _ = url.JoinPath(*config.BaseURL, h)
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, response)
 }
