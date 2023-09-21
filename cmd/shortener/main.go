@@ -2,28 +2,40 @@ package main
 
 import (
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"log"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"shortener/config"
 	"shortener/internal/app/handlers"
+	"shortener/internal/logger"
+	"sync"
 )
 
-func main() {
-	config.InitConfig()
-
+var r = sync.OnceValue(func() *chi.Mux {
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
+	r.Use(logger.RequestLogger)
 
 	r.Post("/", handlers.MainPage)
 	r.Get("/{sn}", handlers.GetByShortName)
 	r.Post("/api/shorten", handlers.JSONHandler)
 	r.NotFound(handlers.Default)
 	r.MethodNotAllowed(handlers.Default)
+	return r
+})
 
-	log.Println("Starting server on", *config.ServerAddress)
-	err := http.ListenAndServe(*config.ServerAddress, r)
-	if err != nil {
+func run() error {
+	if err := logger.Initialize(*config.LogLevel); err != nil {
+		return err
+	}
+	logger.Log.WithFields(logrus.Fields{
+		"address": *config.ServerAddress,
+	}).Infoln("Starting server")
+	return http.ListenAndServe(*config.ServerAddress, r())
+}
+
+func main() {
+	config.InitConfig()
+
+	if err := run(); err != nil {
 		panic(err)
 	}
 }
