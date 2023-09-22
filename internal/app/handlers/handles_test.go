@@ -201,3 +201,69 @@ func TestGetByShortName(t *testing.T) {
 		})
 	}
 }
+
+func TestJSONHandler(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(JSONHandler))
+	defer srv.Close()
+	tests := []struct {
+		name       string
+		method     string
+		body       string
+		wantStatus int
+		wantBody   string
+	}{{
+		name:       "success",
+		method:     http.MethodPost,
+		body:       `{"url":"http://www.yandex.ru"}`,
+		wantStatus: http.StatusCreated,
+		wantBody:   "{\"result\":\"http://localhost:8080/86e99165\"}\n",
+	}, {
+		name:       "methodGet",
+		method:     http.MethodGet,
+		body:       "",
+		wantStatus: http.StatusMethodNotAllowed,
+		wantBody:   "",
+	}, {
+		name:       "methodPut",
+		method:     http.MethodPut,
+		body:       "",
+		wantStatus: http.StatusMethodNotAllowed,
+		wantBody:   "",
+	}, {
+		name:       "methodDelete",
+		method:     http.MethodDelete,
+		body:       "",
+		wantStatus: http.StatusMethodNotAllowed,
+		wantBody:   "",
+	}, {
+		name:       "methodPostWithoutBody",
+		method:     http.MethodPost,
+		body:       "",
+		wantStatus: http.StatusBadRequest,
+		wantBody:   "EOF\n",
+	}, {
+		name:       "methodPostBadUrl",
+		method:     http.MethodPost,
+		body:       `{"url":"http://%www.yandex.ru"}`,
+		wantStatus: http.StatusBadRequest,
+		wantBody:   "parse \"http://%www.yandex.ru\": invalid URL escape \"%ww\"\n",
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, err := http.NewRequest(tt.method, srv.URL, strings.NewReader(tt.body))
+			require.NoError(t, err)
+			cl := http.Client{
+				CheckRedirect: func(req *http.Request, via []*http.Request) error {
+					return http.ErrUseLastResponse
+				},
+			}
+			resp, err := cl.Do(req)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+			assert.Equal(t, tt.wantStatus, resp.StatusCode)
+			b, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantBody, string(b))
+		})
+	}
+}

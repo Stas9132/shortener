@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"net/url"
 	"shortener/config"
+	"shortener/internal/app/model"
+	"shortener/internal/logger"
 	"sync"
 )
 
@@ -44,21 +46,21 @@ func MainPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func JSONHandler(w http.ResponseWriter, r *http.Request) {
-	var request struct {
-		URL string `json:"url"`
+	if r.Method != http.MethodPost {
+		logger.Log.WithField("method", r.Method).Infoln("got request with bad method")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
 	}
-	var response struct {
-		Result string `json:"result"`
-	}
+	var request model.Request
+	var response model.Response
 
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
-
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	h := getHash([]byte(request.URL))
-	storage()[h] = []byte(request.URL)
+	h := getHash([]byte(request.URL.String()))
+	storage()[h] = []byte(request.URL.String())
 	response.Result, _ = url.JoinPath(*config.BaseURL, h)
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, response)
