@@ -69,4 +69,4 @@ jobs:
           go build -o shortener cmd/shortener/main.go
       - name: Run shortenertest
         run: |
-          shortenertest -test.v -test.run=^TestIteration[1-5]$ -binary-path=./shortener -source-path=. -server-port=8081 -server-base-url=http://localhost:8081/
+          shortenertest -test.v -test.run=^TestIteration[1-7]$ -binary-path=./shortener -source-path=. -server-port=8081 -server-base-url=http://localhost:8081/ -file-storage-path=storage.json
