@@ -12,7 +12,7 @@ import (
 
 var r = sync.OnceValue(func() *chi.Mux {
 	r := chi.NewRouter()
-	r.Use(logger.RequestLogger)
+	r.Use(logger.RequestLogger, gzipMiddleware)
 
 	r.Post("/", handlers.MainPage)
 	r.Get("/{sn}", handlers.GetByShortName)
