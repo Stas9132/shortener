@@ -6,13 +6,14 @@ import (
 	"net/http"
 	"shortener/config"
 	"shortener/internal/app/handlers"
+	"shortener/internal/gzip"
 	"shortener/internal/logger"
 	"sync"
 )
 
 var r = sync.OnceValue(func() *chi.Mux {
 	r := chi.NewRouter()
-	r.Use(logger.RequestLogger, gzipMiddleware)
+	r.Use(logger.RequestLogger, gzip.GzipMiddleware)
 
 	r.Post("/", handlers.MainPage)
 	r.Get("/{sn}", handlers.GetByShortName)

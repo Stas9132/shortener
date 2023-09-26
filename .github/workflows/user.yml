@@ -13,6 +13,7 @@ on:
       - iter6
       - iter7
       - iter8
+      - iter9
 # каждый workflows представляет собой набор джоб,
 # которые выполняются последовательно или параллельно,
 # для каждой джобы можно задать докер-образ, в котором будут выполняться шаги (steps),
@@ -67,7 +68,7 @@ jobs:
           mv $GITHUB_WORKSPACE/.tools/shortenertest /usr/local/bin/shortenertest
       - name: Build shortener
         run: |
-          go build -o shortener ./cmd/shortener/
+          go build -o shortener ./cmd/shortener/main.go
       - name: Run shortenertest
         run: |
-          shortenertest -test.v -test.run=^TestIteration[1-8]$ -binary-path=./shortener -source-path=. -server-port=8081 -server-base-url=http://localhost:8081/ -file-storage-path=storage.json
+          shortenertest -test.v -test.run=^TestIteration[1-9]$ -binary-path=./shortener -source-path=. -server-port=8081 -server-base-url=http://localhost:8081/ -file-storage-path=storage.json

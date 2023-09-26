@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"shortener/config"
 	"shortener/internal/app/model"
 	"shortener/internal/logger"
@@ -16,8 +17,28 @@ import (
 )
 
 var storage = sync.OnceValue(func() map[string][]byte {
-	return make(map[string][]byte)
+	m := make(map[string][]byte)
+	if f, e := os.Open(*config.FileStoragePath); e != nil {
+		logger.Log.WithField("error", e).Errorln("Unable to read File Storage Path")
+	} else {
+		defer f.Close()
+		var fStor FileStorageT
+		if e = json.NewDecoder(f).Decode(&fStor); e != nil {
+			logger.Log.WithField("error", e).Errorln("File storage is corrupted")
+		} else {
+			for _, r := range fStor {
+				m[r.ShortURL] = []byte(r.OriginalURL)
+			}
+		}
+	}
+	return m
 })
+
+type FileStorageT []struct {
+	UUID        string `json:"uuid"`
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
+}
 
 func getHash(b []byte) string {
 	h := md5.Sum(b)

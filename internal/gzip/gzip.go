@@ -1,4 +1,4 @@
-package main
+package gzip
 
 import (
 	"compress/gzip"
@@ -71,7 +71,7 @@ func (c *compressReader) Close() error {
 	return c.zr.Close()
 }
 
-func gzipMiddleware(h http.Handler) http.Handler {
+func GzipMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(
 			r.Header.Get("Accept-Encoding"), "grip") {
@@ -90,5 +90,4 @@ func gzipMiddleware(h http.Handler) http.Handler {
 		}
 		h.ServeHTTP(w, r)
 	})
-
 }
