@@ -33,3 +33,10 @@ func (r *Request) UnmarshalJSON(data []byte) (err error) {
 type Response struct {
 	Result string `json:"result"`
 }
+
+type ListURLs []ListURLRecordT
+
+type ListURLRecordT struct {
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
+}

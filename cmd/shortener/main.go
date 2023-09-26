@@ -18,6 +18,7 @@ var r = sync.OnceValue(func() *chi.Mux {
 	r.Post("/", handlers.MainPage)
 	r.Get("/{sn}", handlers.GetByShortName)
 	r.Post("/api/shorten", handlers.JSONHandler)
+	r.Get("/api/user/urls", handlers.ListURLsHandler)
 	r.NotFound(handlers.Default)
 	r.MethodNotAllowed(handlers.Default)
 	return r

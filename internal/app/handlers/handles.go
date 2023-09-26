@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"io"
@@ -85,6 +86,34 @@ func JSONHandler(w http.ResponseWriter, r *http.Request) {
 	response.Result, _ = url.JoinPath(*config.BaseURL, h)
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, response)
+}
+
+func ListURLsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		logger.Log.WithField("method", r.Method).Infoln("got request with bad method")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	var lu model.ListURLs
+	for short, orig := range storage() {
+		lu = append(lu, model.ListURLRecordT{
+			ShortURL: func() string {
+				s, _ := url.JoinPath(*config.BaseURL, short)
+				return s
+			}(),
+			OriginalURL: string(orig),
+		})
+	}
+
+	if len(lu) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	fmt.Println(lu)
+
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, lu)
 }
 
 func GetByShortName(w http.ResponseWriter, r *http.Request) {
