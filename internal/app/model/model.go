@@ -76,7 +76,7 @@ func (f *FileStorageT) Add(ShortURL, OriginalURL string) error {
 		ShortURL:    ShortURL,
 		OriginalURL: OriginalURL,
 	})
-	file, err := os.OpenFile(*config.FileStoragePath, os.O_WRONLY, 0644)
+	file, err := os.OpenFile(*config.FileStoragePath, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func (f *FileStorageT) Add(ShortURL, OriginalURL string) error {
 func (f *FileStorageT) Get(ShortURL string) (FileStorageRecordT, error) {
 	f.Lock()
 	defer f.Unlock()
-	file, err := os.Open(*config.FileStoragePath)
+	file, err := os.OpenFile(*config.FileStoragePath, os.O_CREATE|os.O_RDONLY, 0644)
 	if err != nil {
 		return FileStorageRecordT{}, err
 	}

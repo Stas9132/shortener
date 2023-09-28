@@ -278,11 +278,11 @@ func BenchmarkGetHash(b *testing.B) {
 func FuzzGetHash(f *testing.F) {
 	m := make(map[string][]byte)
 	f.Fuzz(func(t *testing.T, s string) {
-		if regexp.MustCompile("\\w+").FindString(s) != s {
+		if regexp.MustCompile(`\w+`).FindString(s) != s {
 			t.SkipNow()
 		}
 		h := getHash([]byte(s))
-		if _, ok := m[h]; ok && bytes.Compare(m[h], []byte(s)) != 0 {
+		if _, ok := m[h]; ok && !bytes.Equal(m[h], []byte(s)) {
 			t.Error(s, string(m[h]), h)
 		}
 		m[h] = []byte(s)
