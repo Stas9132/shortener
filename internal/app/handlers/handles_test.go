@@ -204,7 +204,7 @@ func TestGetByShortName(t *testing.T) {
 }
 
 func TestJSONHandler(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(PostApiShorten))
+	srv := httptest.NewServer(http.HandlerFunc(PostShorten))
 	defer srv.Close()
 	tests := []struct {
 		name       string

@@ -50,7 +50,7 @@ func PostRoot(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(shortURL))
 }
 
-func PostApiShorten(w http.ResponseWriter, r *http.Request) {
+func PostShorten(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		logger.Log.WithField("method", r.Method).Infoln("got request with bad method")
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -77,7 +77,7 @@ func PostApiShorten(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, response)
 }
 
-func GetApiUserURLs(w http.ResponseWriter, r *http.Request) {
+func GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		logger.Log.WithField("method", r.Method).Infoln("got request with bad method")
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -90,10 +90,10 @@ func GetApiUserURLs(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	for _, r := range lr {
+	for _, or := range lr {
 		lu = append(lu, model.ListURLRecordT{
-			ShortURL:    r.ShortURL,
-			OriginalURL: r.OriginalURL,
+			ShortURL:    or.ShortURL,
+			OriginalURL: or.OriginalURL,
 		})
 	}
 
@@ -107,8 +107,15 @@ func GetApiUserURLs(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetRoot(w http.ResponseWriter, r *http.Request) {
-	f := chi.URLParam(r, "sn")
-	s, err := storage().Get(f)
+	shortURL, e := url.JoinPath(
+		*config.BaseURL,
+		chi.URLParam(r, "sn"))
+	if e != nil {
+		http.Error(w, e.Error(), http.StatusBadRequest)
+		return
+	}
+
+	s, err := storage().Get(shortURL)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
