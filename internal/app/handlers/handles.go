@@ -4,7 +4,6 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"io"
@@ -98,7 +97,7 @@ func GetUserURLs(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	if len(lu) == 0 {
+	if len(lu) == 0 || r.Header.Get("Accept-Encoding") == "" {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
@@ -115,7 +114,6 @@ func GetRoot(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, e.Error(), http.StatusBadRequest)
 		return
 	}
-	fmt.Println(shortURL)
 
 	s, err := storage().Get(shortURL)
 	if err != nil {
