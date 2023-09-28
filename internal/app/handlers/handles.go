@@ -97,7 +97,7 @@ func GetUserURLs(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	if len(lu) == 0 || r.Header.Get("Accept-Encoding") == "" {
+	if len(lu) == 0 || r.Header.Get("Accept-Encoding") != "identity" {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}

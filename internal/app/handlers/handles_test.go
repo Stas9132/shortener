@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -159,7 +158,6 @@ func TestGetByShortName(t *testing.T) {
 	srv := httptest.NewServer(r)
 	defer srv.Close()
 	storage().Add(*config.BaseURL+"1", "https://go.dev/")
-	fmt.Println(storage().ListRecords())
 	type args struct {
 		path string
 		body io.Reader
