@@ -60,7 +60,7 @@ type FileStorageT struct {
 func (f *FileStorageT) ListRecords() ([]FileStorageRecordT, error) {
 	f.Lock()
 	defer f.Unlock()
-	file, err := os.Open(*config.FileStoragePath)
+	file, err := os.OpenFile(*config.FileStoragePath, os.O_CREATE|os.O_RDONLY, 0644)
 	if err != nil {
 		return nil, err
 	}
