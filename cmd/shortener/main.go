@@ -15,10 +15,10 @@ var r = sync.OnceValue(func() *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(logger.RequestLogger, gzip.GzipMiddleware)
 
-	r.Post("/", handlers.MainPage)
-	r.Get("/{sn}", handlers.GetByShortName)
-	r.Post("/api/shorten", handlers.JSONHandler)
-	r.Get("/api/user/urls", handlers.ListURLsHandler)
+	r.Post("/", handlers.PostRoot)
+	r.Get("/{sn}", handlers.GetRoot)
+	r.Post("/api/shorten", handlers.PostApiShorten)
+	r.Get("/api/user/urls", handlers.GetApiUserURLs)
 	r.NotFound(handlers.Default)
 	r.MethodNotAllowed(handlers.Default)
 	return r

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -51,8 +52,8 @@ func Test_getHash(t *testing.T) {
 func TestMainHandler(t *testing.T) {
 	mem := make(map[string]string)
 	r := chi.NewRouter()
-	r.Post("/", MainPage)
-	r.Get("/{sn}", GetByShortName)
+	r.Post("/", PostRoot)
+	r.Get("/{sn}", GetRoot)
 	r.NotFound(Default)
 	r.MethodNotAllowed(Default)
 	srv := httptest.NewServer(r)
@@ -118,7 +119,7 @@ func TestMainHandler(t *testing.T) {
 }
 
 func TestMainPage(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(MainPage))
+	srv := httptest.NewServer(http.HandlerFunc(PostRoot))
 	defer srv.Close()
 	type args struct {
 		body io.Reader
@@ -154,7 +155,7 @@ func TestMainPage(t *testing.T) {
 
 func TestGetByShortName(t *testing.T) {
 	r := chi.NewRouter()
-	r.Get("/{sn}", GetByShortName)
+	r.Get("/{sn}", GetRoot)
 	srv := httptest.NewServer(r)
 	defer srv.Close()
 	storage()["1"] = []byte("https://go.dev/")
@@ -203,7 +204,7 @@ func TestGetByShortName(t *testing.T) {
 }
 
 func TestJSONHandler(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(JSONHandler))
+	srv := httptest.NewServer(http.HandlerFunc(PostApiShorten))
 	defer srv.Close()
 	tests := []struct {
 		name       string
@@ -266,4 +267,24 @@ func TestJSONHandler(t *testing.T) {
 			assert.Equal(t, tt.wantBody, string(b))
 		})
 	}
+}
+
+func BenchmarkGetHash(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		getHash([]byte(strconv.Itoa(i)))
+	}
+}
+
+func FuzzGetHash(f *testing.F) {
+	m := make(map[string][]byte)
+	f.Fuzz(func(t *testing.T, s string) {
+		if regexp.MustCompile("\\w+").FindString(s) != s {
+			t.SkipNow()
+		}
+		h := getHash([]byte(s))
+		if _, ok := m[h]; ok && bytes.Compare(m[h], []byte(s)) != 0 {
+			t.Error(s, string(m[h]), h)
+		}
+		m[h] = []byte(s)
+	})
 }

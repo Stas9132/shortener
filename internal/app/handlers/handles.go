@@ -23,7 +23,7 @@ var storage = sync.OnceValue(func() map[string][]byte {
 		logger.Log.WithField("error", e).Errorln("Unable to read File Storage Path")
 	} else {
 		defer f.Close()
-		var fStor FileStorageT
+		var fStor model.FileStorageT
 		if e = json.NewDecoder(f).Decode(&fStor); e != nil {
 			logger.Log.WithField("error", e).Errorln("File storage is corrupted")
 		} else {
@@ -34,12 +34,6 @@ var storage = sync.OnceValue(func() map[string][]byte {
 	}
 	return m
 })
-
-type FileStorageT []struct {
-	UUID        string `json:"uuid"`
-	ShortURL    string `json:"short_url"`
-	OriginalURL string `json:"original_url"`
-}
 
 func getHash(b []byte) string {
 	h := md5.Sum(b)
@@ -54,7 +48,7 @@ func Default(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusBadRequest)
 }
 
-func MainPage(w http.ResponseWriter, r *http.Request) {
+func PostRoot(w http.ResponseWriter, r *http.Request) {
 	b, e := io.ReadAll(r.Body)
 	if e != nil {
 		http.Error(w, e.Error(), http.StatusBadRequest)
@@ -67,7 +61,7 @@ func MainPage(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(u))
 }
 
-func JSONHandler(w http.ResponseWriter, r *http.Request) {
+func PostApiShorten(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		logger.Log.WithField("method", r.Method).Infoln("got request with bad method")
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -88,7 +82,7 @@ func JSONHandler(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, response)
 }
 
-func ListURLsHandler(w http.ResponseWriter, r *http.Request) {
+func GetApiUserURLs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		logger.Log.WithField("method", r.Method).Infoln("got request with bad method")
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -116,7 +110,7 @@ func ListURLsHandler(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, lu)
 }
 
-func GetByShortName(w http.ResponseWriter, r *http.Request) {
+func GetRoot(w http.ResponseWriter, r *http.Request) {
 	f := chi.URLParam(r, "sn")
 	b, ok := storage()[f]
 	if !ok {
