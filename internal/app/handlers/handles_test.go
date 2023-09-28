@@ -147,8 +147,8 @@ func TestMainPage(t *testing.T) {
 			require.NoError(t, err)
 			m := regexp.MustCompile(`.*//.*/(\w{8})`).FindSubmatch(b)
 			require.Equal(t, len(m), 2, string(b))
-			_, ok := storage()[string(m[1])]
-			assert.True(t, ok)
+			_, err = storage().Get(string(m[1]))
+			assert.NoError(t, err)
 		})
 	}
 }
@@ -158,7 +158,7 @@ func TestGetByShortName(t *testing.T) {
 	r.Get("/{sn}", GetRoot)
 	srv := httptest.NewServer(r)
 	defer srv.Close()
-	storage()["1"] = []byte("https://go.dev/")
+	storage().Add("1", "https://go.dev/")
 	type args struct {
 		path string
 		body io.Reader
