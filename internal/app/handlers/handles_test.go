@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"shortener/config"
 	"strconv"
 	"strings"
 	"testing"
@@ -145,9 +147,7 @@ func TestMainPage(t *testing.T) {
 			assert.Equal(t, tt.wantStatus, resp.StatusCode)
 			b, err := io.ReadAll(resp.Body)
 			require.NoError(t, err)
-			m := regexp.MustCompile(`.*//.*/(\w{8})`).FindSubmatch(b)
-			require.Equal(t, len(m), 2, string(b))
-			_, err = storage().Get(string(m[1]))
+			_, err = storage().Get(string(b))
 			assert.NoError(t, err)
 		})
 	}
@@ -158,7 +158,8 @@ func TestGetByShortName(t *testing.T) {
 	r.Get("/{sn}", GetRoot)
 	srv := httptest.NewServer(r)
 	defer srv.Close()
-	storage().Add("1", "https://go.dev/")
+	storage().Add(*config.BaseURL+"1", "https://go.dev/")
+	fmt.Println(storage().ListRecords())
 	type args struct {
 		path string
 		body io.Reader
@@ -178,7 +179,7 @@ func TestGetByShortName(t *testing.T) {
 		name:       "Wrong GET",
 		args:       args{path: "/0", body: nil},
 		wantStatus: http.StatusBadRequest,
-		wantBody:   []byte{0x30, 0x0a},
+		wantBody:   []byte("not found\n"),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -198,7 +199,7 @@ func TestGetByShortName(t *testing.T) {
 			assert.Equal(t, tt.wantStatus, resp.StatusCode)
 			b, err := io.ReadAll(resp.Body)
 			require.NoError(t, err)
-			assert.Equal(t, b, tt.wantBody)
+			assert.Equal(t, tt.wantBody, b)
 		})
 	}
 }

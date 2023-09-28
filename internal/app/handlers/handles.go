@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"io"
@@ -114,6 +115,7 @@ func GetRoot(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, e.Error(), http.StatusBadRequest)
 		return
 	}
+	fmt.Println(shortURL)
 
 	s, err := storage().Get(shortURL)
 	if err != nil {
