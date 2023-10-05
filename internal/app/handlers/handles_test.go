@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"shortener/config"
 	"strconv"
 	"strings"
 	"testing"
@@ -51,8 +53,8 @@ func Test_getHash(t *testing.T) {
 func TestMainHandler(t *testing.T) {
 	mem := make(map[string]string)
 	r := chi.NewRouter()
-	r.Post("/", MainPage)
-	r.Get("/{sn}", GetByShortName)
+	r.Post("/", PostRoot)
+	r.Get("/{sn}", GetRoot)
 	r.NotFound(Default)
 	r.MethodNotAllowed(Default)
 	srv := httptest.NewServer(r)
@@ -118,7 +120,7 @@ func TestMainHandler(t *testing.T) {
 }
 
 func TestMainPage(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(MainPage))
+	srv := httptest.NewServer(http.HandlerFunc(PostRoot))
 	defer srv.Close()
 	type args struct {
 		body io.Reader
@@ -144,20 +146,18 @@ func TestMainPage(t *testing.T) {
 			assert.Equal(t, tt.wantStatus, resp.StatusCode)
 			b, err := io.ReadAll(resp.Body)
 			require.NoError(t, err)
-			m := regexp.MustCompile(`.*//.*/(\w{8})`).FindSubmatch(b)
-			require.Equal(t, len(m), 2, string(b))
-			_, ok := storage()[string(m[1])]
-			assert.True(t, ok)
+			_, err = storage().Get(string(b))
+			assert.NoError(t, err)
 		})
 	}
 }
 
 func TestGetByShortName(t *testing.T) {
 	r := chi.NewRouter()
-	r.Get("/{sn}", GetByShortName)
+	r.Get("/{sn}", GetRoot)
 	srv := httptest.NewServer(r)
 	defer srv.Close()
-	storage()["1"] = []byte("https://go.dev/")
+	storage().Add(*config.BaseURL+"1", "https://go.dev/")
 	type args struct {
 		path string
 		body io.Reader
@@ -177,7 +177,7 @@ func TestGetByShortName(t *testing.T) {
 		name:       "Wrong GET",
 		args:       args{path: "/0", body: nil},
 		wantStatus: http.StatusBadRequest,
-		wantBody:   []byte{0x30, 0x0a},
+		wantBody:   []byte("not found\n"),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -197,7 +197,93 @@ func TestGetByShortName(t *testing.T) {
 			assert.Equal(t, tt.wantStatus, resp.StatusCode)
 			b, err := io.ReadAll(resp.Body)
 			require.NoError(t, err)
-			assert.Equal(t, b, tt.wantBody)
+			assert.Equal(t, tt.wantBody, b)
 		})
 	}
+}
+
+func TestJSONHandler(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(PostShorten))
+	defer srv.Close()
+	tests := []struct {
+		name       string
+		method     string
+		body       string
+		wantStatus int
+		wantBody   string
+	}{{
+		name:       "success",
+		method:     http.MethodPost,
+		body:       `{"url":"http://www.yandex.ru"}`,
+		wantStatus: http.StatusCreated,
+		wantBody:   "{\"result\":\"http://localhost:8080/86e99165\"}\n",
+	}, {
+		name:       "methodGet",
+		method:     http.MethodGet,
+		body:       "",
+		wantStatus: http.StatusMethodNotAllowed,
+		wantBody:   "",
+	}, {
+		name:       "methodPut",
+		method:     http.MethodPut,
+		body:       "",
+		wantStatus: http.StatusMethodNotAllowed,
+		wantBody:   "",
+	}, {
+		name:       "methodDelete",
+		method:     http.MethodDelete,
+		body:       "",
+		wantStatus: http.StatusMethodNotAllowed,
+		wantBody:   "",
+	}, {
+		name:       "methodPostWithoutBody",
+		method:     http.MethodPost,
+		body:       "",
+		wantStatus: http.StatusBadRequest,
+		wantBody:   "EOF\n",
+	}, {
+		name:       "methodPostBadUrl",
+		method:     http.MethodPost,
+		body:       `{"url":"http://%www.yandex.ru"}`,
+		wantStatus: http.StatusBadRequest,
+		wantBody:   "parse \"http://%www.yandex.ru\": invalid URL escape \"%ww\"\n",
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, err := http.NewRequest(tt.method, srv.URL, strings.NewReader(tt.body))
+			require.NoError(t, err)
+			cl := http.Client{
+				CheckRedirect: func(req *http.Request, via []*http.Request) error {
+					return http.ErrUseLastResponse
+				},
+			}
+			resp, err := cl.Do(req)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+			assert.Equal(t, tt.wantStatus, resp.StatusCode)
+			b, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantBody, string(b))
+		})
+	}
+}
+
+func BenchmarkGetHash(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		getHash([]byte(strconv.Itoa(i)))
+	}
+}
+
+func FuzzGetHash(f *testing.F) {
+	m := make(map[string][]byte)
+	f.Fuzz(func(t *testing.T, s string) {
+		if regexp.MustCompile(`\w+`).FindString(s) != s {
+			t.SkipNow()
+		}
+		h := getHash([]byte(s))
+		if _, ok := m[h]; ok && !bytes.Equal(m[h], []byte(s)) {
+			t.Error(s, string(m[h]), h)
+		}
+		m[h] = []byte(s)
+	})
 }

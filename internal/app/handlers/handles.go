@@ -10,11 +10,13 @@ import (
 	"net/http"
 	"net/url"
 	"shortener/config"
+	"shortener/internal/app/model"
+	"shortener/internal/logger"
 	"sync"
 )
 
-var storage = sync.OnceValue(func() map[string][]byte {
-	return make(map[string][]byte)
+var storage = sync.OnceValue(func() *model.FileStorageT {
+	return &model.FileStorageT{}
 })
 
 func getHash(b []byte) string {
@@ -30,48 +32,95 @@ func Default(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusBadRequest)
 }
 
-func MainPage(w http.ResponseWriter, r *http.Request) {
+func PostRoot(w http.ResponseWriter, r *http.Request) {
 	b, e := io.ReadAll(r.Body)
 	if e != nil {
 		http.Error(w, e.Error(), http.StatusBadRequest)
 		return
 	}
-	h := getHash(b)
-	storage()[h] = b
-	u, _ := url.JoinPath(*config.BaseURL, h)
+	shortURL, e := url.JoinPath(
+		*config.BaseURL,
+		getHash(b))
+	if e != nil {
+		http.Error(w, e.Error(), http.StatusBadRequest)
+		return
+	}
+	storage().Add(shortURL, string(b))
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(u))
+	w.Write([]byte(shortURL))
 }
 
-func JSONHandler(w http.ResponseWriter, r *http.Request) {
-	var request struct {
-		URL string `json:"url"`
+func PostShorten(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		logger.Log.WithField("method", r.Method).Infoln("got request with bad method")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
 	}
-	var response struct {
-		Result string `json:"result"`
-	}
+	var request model.Request
+	var response model.Response
 
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
-
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	h := getHash([]byte(request.URL))
-	storage()[h] = []byte(request.URL)
-	response.Result, _ = url.JoinPath(*config.BaseURL, h)
+	shortURL, err := url.JoinPath(
+		*config.BaseURL,
+		getHash([]byte(request.URL.String())))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	storage().Add(shortURL, request.URL.String())
+	response.Result = shortURL
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, response)
 }
 
-func GetByShortName(w http.ResponseWriter, r *http.Request) {
-	f := chi.URLParam(r, "sn")
-	b, ok := storage()[f]
-	if !ok {
-		http.Error(w, f, http.StatusBadRequest)
+func GetUserURLs(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		logger.Log.WithField("method", r.Method).Infoln("got request with bad method")
+		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	w.Header().Set("Location", string(b))
+
+	var lu model.ListURLs
+	lr, err := storage().ListRecords()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	for _, or := range lr {
+		lu = append(lu, model.ListURLRecordT{
+			ShortURL:    or.ShortURL,
+			OriginalURL: or.OriginalURL,
+		})
+	}
+
+	if len(lu) == 0 || r.Header.Get("Accept-Encoding") != "identity" {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, lu)
+}
+
+func GetRoot(w http.ResponseWriter, r *http.Request) {
+	shortURL, e := url.JoinPath(
+		*config.BaseURL,
+		chi.URLParam(r, "sn"))
+	if e != nil {
+		http.Error(w, e.Error(), http.StatusBadRequest)
+		return
+	}
+
+	s, err := storage().Get(shortURL)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Location", s.OriginalURL)
 	w.WriteHeader(http.StatusTemporaryRedirect)
-	w.Write(b)
+	w.Write([]byte(s.OriginalURL))
 }
