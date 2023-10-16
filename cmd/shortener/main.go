@@ -1,43 +1,67 @@
 package main
 
 import (
+	"context"
 	"github.com/go-chi/chi/v5"
-	"github.com/sirupsen/logrus"
+	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"shortener/config"
 	"shortener/internal/app/handlers"
+	"shortener/internal/app/handlers/middlware"
+	"shortener/internal/app/storage"
 	"shortener/internal/gzip"
 	"shortener/internal/logger"
 	"sync"
+	"time"
 )
 
-var r = sync.OnceValue(func() *chi.Mux {
-	r := chi.NewRouter()
-	r.Use(logger.RequestLogger, gzip.GzipMiddleware)
-
-	r.Post("/", handlers.PostRoot)
-	r.Get("/{sn}", handlers.GetRoot)
-	r.Post("/api/shorten", handlers.PostShorten)
-	r.Get("/api/user/urls", handlers.GetUserURLs)
-	r.NotFound(handlers.Default)
-	r.MethodNotAllowed(handlers.Default)
-	return r
+var server = sync.OnceValue(func() *http.Server {
+	return &http.Server{
+		Addr: *config.ServerAddress,
+	}
 })
 
-func run() error {
-	if err := logger.Initialize(*config.LogLevel); err != nil {
-		return err
-	}
-	logger.Log.WithFields(logrus.Fields{
+func mRouter(handler handlers.ApiI) {
+	r := chi.NewRouter()
+	r.Use(middlware.RequestLogger, gzip.GzipMiddleware)
+
+	r.Post("/", handler.PostPlainText)
+	r.Get("/{sn}", handler.GetRoot)
+	r.Post("/api/shorten", handler.PostJSON)
+	r.Get("/api/user/urls", handler.GetUserURLs)
+	r.NotFound(handler.Default)
+	r.MethodNotAllowed(handler.Default)
+	http.Handle("/", r)
+}
+
+func run(h handlers.ApiI) {
+	logger.WithFields(map[string]interface{}{
 		"address": *config.ServerAddress,
 	}).Infoln("Starting server")
-	return http.ListenAndServe(*config.ServerAddress, r())
+
+	mRouter(h)
+
+	if err := server().ListenAndServe(); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func main() {
-	config.InitConfig()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
 
-	if err := run(); err != nil {
-		panic(err)
-	}
+	config.Init()
+	logger.Init()
+	st := storage.New()
+	h := handlers.NewApi(st)
+	go run(h)
+
+	<-ctx.Done()
+
+	ctx2, can2 := context.WithTimeout(context.Background(), 5*time.Second)
+	defer can2()
+	server().Shutdown(ctx2)
+	st.Close()
 }

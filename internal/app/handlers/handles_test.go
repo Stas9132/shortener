@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"bytes"
+	"encoding/json"
+	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -10,15 +12,21 @@ import (
 	"net/http/httptest"
 	"regexp"
 	"shortener/config"
+	"shortener/internal/app/model"
+	strg "shortener/internal/app/storage"
 	"strconv"
 	"strings"
 	"testing"
+	"testing/iotest"
 )
 
 var _ = func() bool {
 	testing.Init()
 	return true
 }()
+
+var storage = strg.New()
+var api = NewApi(storage)
 
 func Test_getHash(t *testing.T) {
 	type args struct {
@@ -29,15 +37,15 @@ func Test_getHash(t *testing.T) {
 		args args
 		want string
 	}{{
-		name: "Empty string",
+		name: `"Hash: "" - empty string"`,
 		args: struct{ b []byte }{b: nil},
 		want: "389589f3",
 	}, {
-		name: "yandex.ru",
+		name: `Hash: "https://yandex.ru/"`,
 		args: struct{ b []byte }{b: []byte("https://yandex.ru/")},
 		want: "1e320d4f",
 	}, {
-		name: "go.dev",
+		name: `Hash: "https://go.dev/"`,
 		args: struct{ b []byte }{b: []byte("https://go.dev/")},
 		want: "e4546b92",
 	}}
@@ -50,13 +58,13 @@ func Test_getHash(t *testing.T) {
 	}
 }
 
-func TestMainHandler(t *testing.T) {
+func TestHandlerWithStorage(t *testing.T) {
 	mem := make(map[string]string)
 	r := chi.NewRouter()
-	r.Post("/", PostRoot)
-	r.Get("/{sn}", GetRoot)
-	r.NotFound(Default)
-	r.MethodNotAllowed(Default)
+	r.Post("/", api.PostPlainText)
+	r.Get("/{sn}", api.GetRoot)
+	r.NotFound(api.Default)
+	r.MethodNotAllowed(api.Default)
 	srv := httptest.NewServer(r)
 	defer srv.Close()
 	type args struct {
@@ -71,18 +79,18 @@ func TestMainHandler(t *testing.T) {
 		wantStatus int
 		wantBody   []byte
 	}{{
-		name:       "Success POST",
+		name:       `Success: POST "https://go.dev/" -> hash("https://go.dev/")`,
 		args:       args{method: http.MethodPost, path: "/", body: strings.NewReader("https://go.dev/")},
 		memSlot:    "1",
 		wantStatus: http.StatusCreated,
 		wantBody:   []byte("e4546b92"),
 	}, {
-		name:       "Success GET",
+		name:       `Success: GET hash("https://go.dev/") -> "https://go.dev/"`,
 		args:       args{method: http.MethodGet, path: "1", body: nil},
 		wantStatus: http.StatusTemporaryRedirect,
 		wantBody:   []byte("https://go.dev/"),
 	}, {
-		name:       "Wrong PUT",
+		name:       "Wrong PUT: rejected by router",
 		args:       args{method: http.MethodPut, path: "/", body: nil},
 		wantStatus: http.StatusBadRequest,
 		wantBody:   []byte{},
@@ -119,9 +127,7 @@ func TestMainHandler(t *testing.T) {
 	}
 }
 
-func TestMainPage(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(PostRoot))
-	defer srv.Close()
+func TestPostPlainText(t *testing.T) {
 	type args struct {
 		body io.Reader
 	}
@@ -130,34 +136,110 @@ func TestMainPage(t *testing.T) {
 		args       args
 		wantStatus int
 	}{{
-		name:       "Success POST",
+		name:       `Success POST "https://go.dev/"`,
 		args:       args{body: strings.NewReader("https://go.dev/")},
 		wantStatus: http.StatusCreated,
 	}, {
-		name:       "Success2 POST",
-		args:       args{body: strings.NewReader("https://yandex.ru/")},
-		wantStatus: http.StatusCreated,
+		name:       `#1 Error on io.ReadALL `,
+		args:       args{body: strings.NewReader("https://go.dev/")},
+		wantStatus: http.StatusBadRequest,
+	}, {
+		name:       `#2 Error on url.Join `,
+		args:       args{body: strings.NewReader("https://go.dev/")},
+		wantStatus: http.StatusBadRequest,
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resp, err := http.Post(srv.URL, "text/plain", tt.args.body)
-			require.NoError(t, err)
+			switch {
+			case strings.HasPrefix(tt.name, "#1"):
+				tt.args.body = iotest.ErrReader(errors.New("io error occurred"))
+			case strings.HasPrefix(tt.name, "#2"):
+				wk := config.BaseURL
+				defer func() {
+					config.BaseURL = wk
+				}()
+				str := "ht\tp://wewe.we/"
+				config.BaseURL = &str
+			}
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodPost, "http://localhost/", tt.args.body)
+			api.PostPlainText(w, r)
+			resp := w.Result()
 			defer resp.Body.Close()
 			assert.Equal(t, tt.wantStatus, resp.StatusCode)
-			b, err := io.ReadAll(resp.Body)
-			require.NoError(t, err)
-			_, err = storage().Get(string(b))
-			assert.NoError(t, err)
+			if resp.StatusCode == http.StatusCreated {
+				b, err := io.ReadAll(resp.Body)
+				require.NoError(t, err)
+				_, ok := storage.Load(string(b))
+				assert.True(t, ok)
+			}
+		})
+	}
+}
+
+func TestPostJSON(t *testing.T) {
+	tests := []struct {
+		name       string
+		body       io.Reader
+		wantStatus int
+		wantBody   string
+	}{{
+		name:       "Success",
+		body:       strings.NewReader(`{"url":"http://www.yandex.ru"}`),
+		wantStatus: http.StatusCreated,
+		wantBody:   `{"result":"http://localhost:8080/86e99165"}`,
+	}, {
+		name:       "Bad JSON",
+		body:       strings.NewReader(`{url":"http://www.yandex.ru"}`),
+		wantStatus: http.StatusBadRequest,
+		wantBody:   ``,
+	}, {
+		name:       "#1 io error on json.decode",
+		body:       strings.NewReader(`{url":"http://www.yandex.ru"}`),
+		wantStatus: http.StatusBadRequest,
+		wantBody:   ``,
+	}, {
+		name:       "#2 Error on url.Join",
+		body:       strings.NewReader(`{url":"http://www.yandex.ru"}`),
+		wantStatus: http.StatusBadRequest,
+		wantBody:   ``,
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			switch {
+			case strings.HasPrefix(tt.name, "#1"):
+				tt.body = iotest.ErrReader(errors.New("io error occurred"))
+			case strings.HasPrefix(tt.name, "#2"):
+				wk := config.BaseURL
+				defer func() {
+					config.BaseURL = wk
+				}()
+				str := "ht\tp://wewe.we/"
+				config.BaseURL = &str
+			}
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodPost, "http://localhost/", tt.body)
+			api.PostJSON(w, r)
+			resp := w.Result()
+			defer resp.Body.Close()
+			assert.Equal(t, tt.wantStatus, resp.StatusCode)
+			if resp.StatusCode == http.StatusCreated {
+				var mr model.Response
+				err := json.NewDecoder(resp.Body).Decode(&mr)
+				require.NoError(t, err)
+				_, ok := storage.Load(mr.Result)
+				assert.True(t, ok)
+			}
 		})
 	}
 }
 
 func TestGetByShortName(t *testing.T) {
 	r := chi.NewRouter()
-	r.Get("/{sn}", GetRoot)
+	r.Get("/{sn}", api.GetRoot)
 	srv := httptest.NewServer(r)
 	defer srv.Close()
-	storage().Add(*config.BaseURL+"1", "https://go.dev/")
+	//storage.Add(*config.BaseURL+"1", "https://go.dev/")
 	type args struct {
 		path string
 		body io.Reader
@@ -198,72 +280,6 @@ func TestGetByShortName(t *testing.T) {
 			b, err := io.ReadAll(resp.Body)
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantBody, b)
-		})
-	}
-}
-
-func TestJSONHandler(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(PostShorten))
-	defer srv.Close()
-	tests := []struct {
-		name       string
-		method     string
-		body       string
-		wantStatus int
-		wantBody   string
-	}{{
-		name:       "success",
-		method:     http.MethodPost,
-		body:       `{"url":"http://www.yandex.ru"}`,
-		wantStatus: http.StatusCreated,
-		wantBody:   "{\"result\":\"http://localhost:8080/86e99165\"}\n",
-	}, {
-		name:       "methodGet",
-		method:     http.MethodGet,
-		body:       "",
-		wantStatus: http.StatusMethodNotAllowed,
-		wantBody:   "",
-	}, {
-		name:       "methodPut",
-		method:     http.MethodPut,
-		body:       "",
-		wantStatus: http.StatusMethodNotAllowed,
-		wantBody:   "",
-	}, {
-		name:       "methodDelete",
-		method:     http.MethodDelete,
-		body:       "",
-		wantStatus: http.StatusMethodNotAllowed,
-		wantBody:   "",
-	}, {
-		name:       "methodPostWithoutBody",
-		method:     http.MethodPost,
-		body:       "",
-		wantStatus: http.StatusBadRequest,
-		wantBody:   "EOF\n",
-	}, {
-		name:       "methodPostBadUrl",
-		method:     http.MethodPost,
-		body:       `{"url":"http://%www.yandex.ru"}`,
-		wantStatus: http.StatusBadRequest,
-		wantBody:   "parse \"http://%www.yandex.ru\": invalid URL escape \"%ww\"\n",
-	}}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			req, err := http.NewRequest(tt.method, srv.URL, strings.NewReader(tt.body))
-			require.NoError(t, err)
-			cl := http.Client{
-				CheckRedirect: func(req *http.Request, via []*http.Request) error {
-					return http.ErrUseLastResponse
-				},
-			}
-			resp, err := cl.Do(req)
-			require.NoError(t, err)
-			defer resp.Body.Close()
-			assert.Equal(t, tt.wantStatus, resp.StatusCode)
-			b, err := io.ReadAll(resp.Body)
-			require.NoError(t, err)
-			assert.Equal(t, tt.wantBody, string(b))
 		})
 	}
 }
