@@ -21,6 +21,7 @@ type APII interface {
 	PostJSON(w http.ResponseWriter, r *http.Request)
 	GetUserURLs(w http.ResponseWriter, r *http.Request)
 	GetRoot(w http.ResponseWriter, r *http.Request)
+	GetPing(w http.ResponseWriter, r *http.Request)
 }
 
 type APIT struct {
@@ -140,4 +141,13 @@ func (a APIT) GetRoot(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Location", s.(string))
 	w.WriteHeader(http.StatusTemporaryRedirect)
 	w.Write([]byte(s.(string)))
+}
+
+func (a APIT) GetPing(w http.ResponseWriter, r *http.Request) {
+	err := a.storage.Ping()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }

@@ -31,6 +31,7 @@ func mRouter(handler handlers.APII) {
 	r.Get("/{sn}", handler.GetRoot)
 	r.Post("/api/shorten", handler.PostJSON)
 	r.Get("/api/user/urls", handler.GetUserURLs)
+	r.Get("/ping", handler.GetPing)
 	r.NotFound(handler.Default)
 	r.MethodNotAllowed(handler.Default)
 	http.Handle("/", r)

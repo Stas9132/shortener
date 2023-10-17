@@ -1,8 +1,10 @@
 package storage
 
 import (
+	"database/sql"
 	"encoding/json"
 	"github.com/google/uuid"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"os"
 	"shortener/config"
 	"shortener/internal/logger"
@@ -11,12 +13,14 @@ import (
 type StorageT struct {
 	cache map[any]any
 	file  *os.File
+	db    *sql.DB
 }
 
 type StorageI interface {
 	Load(key any) (value any, ok bool)
 	Store(key, value any)
 	Range(f func(key, value any) bool)
+	Ping() error
 	Close() error
 }
 
@@ -36,9 +40,13 @@ func New() *StorageT {
 			}
 		}
 	}
+
+	db, err := sql.Open("pgx", *config.DatabaseDsn)
+
 	return &StorageT{
 		cache: c,
 		file:  f,
+		db:    db,
 	}
 }
 
@@ -75,6 +83,10 @@ func (s *StorageT) Range(f func(key, value any) bool) {
 
 func (s *StorageT) Close() error {
 	return s.file.Close()
+}
+
+func (s *StorageT) Ping() error {
+	return s.db.Ping()
 }
 
 type FileStorageRecordT struct {
