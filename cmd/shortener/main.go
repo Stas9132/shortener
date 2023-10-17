@@ -44,7 +44,7 @@ func run(h handlers.APII) {
 	mRouter(h)
 
 	if err := server().ListenAndServe(); err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 }
 
