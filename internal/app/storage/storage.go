@@ -39,7 +39,7 @@ func (s *StorageT) Range(f func(key, value any) bool) {
 	}
 }
 
-func (f *StorageT) Close() error {
+func (s *StorageT) Close() error {
 	return nil
 }
 

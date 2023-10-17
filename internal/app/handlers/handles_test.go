@@ -27,7 +27,7 @@ var _ = func() bool {
 }()
 
 var storage = strg.New()
-var api = NewApi(storage)
+var api = NewAPI(storage)
 
 func Test_getHash(t *testing.T) {
 	type args struct {
@@ -237,7 +237,7 @@ func TestPostJSON(t *testing.T) {
 
 func TestGetUserURLs(t *testing.T) {
 	s := strg.New()
-	a := NewApi(s)
+	a := NewAPI(s)
 	srv := httptest.NewServer(http.HandlerFunc(a.GetUserURLs))
 	defer srv.Close()
 	tests := []struct {

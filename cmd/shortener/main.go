@@ -23,7 +23,7 @@ var server = sync.OnceValue(func() *http.Server {
 	}
 })
 
-func mRouter(handler handlers.ApiI) {
+func mRouter(handler handlers.APII) {
 	r := chi.NewRouter()
 	r.Use(middlware.RequestLogger, gzip.GzipMiddleware)
 
@@ -36,7 +36,7 @@ func mRouter(handler handlers.ApiI) {
 	http.Handle("/", r)
 }
 
-func run(h handlers.ApiI) {
+func run(h handlers.APII) {
 	logger.WithFields(map[string]interface{}{
 		"address": *config.ServerAddress,
 	}).Infoln("Starting server")
@@ -55,7 +55,7 @@ func main() {
 	config.Init()
 	logger.Init()
 	st := storage.New()
-	h := handlers.NewApi(st)
+	h := handlers.NewAPI(st)
 	go run(h)
 
 	<-ctx.Done()

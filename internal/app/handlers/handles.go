@@ -15,7 +15,7 @@ import (
 	"shortener/internal/logger"
 )
 
-type ApiI interface {
+type APII interface {
 	Default(w http.ResponseWriter, r *http.Request)
 	PostPlainText(w http.ResponseWriter, r *http.Request)
 	PostJSON(w http.ResponseWriter, r *http.Request)
@@ -23,12 +23,12 @@ type ApiI interface {
 	GetRoot(w http.ResponseWriter, r *http.Request)
 }
 
-type ApiT struct {
+type APIT struct {
 	storage strg.StorageI
 }
 
-func NewApi(storage strg.StorageI) ApiT {
-	return ApiT{storage: storage}
+func NewAPI(storage strg.StorageI) APIT {
+	return APIT{storage: storage}
 }
 
 func getHash(b []byte) string {
@@ -40,11 +40,11 @@ func getHash(b []byte) string {
 	return hex.EncodeToString(d)
 }
 
-func (a ApiT) Default(w http.ResponseWriter, r *http.Request) {
+func (a APIT) Default(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusBadRequest)
 }
 
-func (a ApiT) PostPlainText(w http.ResponseWriter, r *http.Request) {
+func (a APIT) PostPlainText(w http.ResponseWriter, r *http.Request) {
 	b, e := io.ReadAll(r.Body)
 	if e != nil {
 		logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
@@ -70,7 +70,7 @@ func (a ApiT) PostPlainText(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(shortURL))
 }
 
-func (a ApiT) PostJSON(w http.ResponseWriter, r *http.Request) {
+func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 	var request model.Request
 	var response model.Response
 
@@ -100,7 +100,7 @@ func (a ApiT) PostJSON(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, response)
 }
 
-func (a ApiT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
+func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	var lu model.ListURLs
 	a.storage.Range(func(key, value any) bool {
 		lu = append(lu, model.ListURLRecordT{
@@ -119,7 +119,7 @@ func (a ApiT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, lu)
 }
 
-func (a ApiT) GetRoot(w http.ResponseWriter, r *http.Request) {
+func (a APIT) GetRoot(w http.ResponseWriter, r *http.Request) {
 	shortURL, e := url.JoinPath(
 		*config.BaseURL,
 		chi.URLParam(r, "sn"))
