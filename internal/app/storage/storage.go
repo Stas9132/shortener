@@ -33,7 +33,7 @@ func (s *StorageT) Store(key, value any) {
 }
 func (s *StorageT) Range(f func(key, value any) bool) {
 	for k, v := range s.cache {
-		if f(k, v) {
+		if !f(k, v) {
 			break
 		}
 	}
