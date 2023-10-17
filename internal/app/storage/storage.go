@@ -42,6 +42,9 @@ func New() *StorageT {
 	}
 
 	db, err := sql.Open("pgx", *config.DatabaseDsn)
+	if err != nil {
+		logger.WithField("error", err).Errorln("Error while open db")
+	}
 
 	return &StorageT{
 		cache: c,
