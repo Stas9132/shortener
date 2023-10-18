@@ -110,6 +110,7 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	render.Status(r, http.StatusCreated)
+	render.JSON(w, r, response)
 }
 
 func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {

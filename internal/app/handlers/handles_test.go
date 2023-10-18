@@ -129,6 +129,8 @@ func TestHandlerAndStorage(t *testing.T) {
 }
 
 func TestPostPlainText(t *testing.T) {
+	s := strg.New()
+	a := NewAPI(s)
 	type args struct {
 		body io.Reader
 	}
@@ -164,7 +166,7 @@ func TestPostPlainText(t *testing.T) {
 			}
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPost, "http://localhost/", tt.args.body)
-			api.PostPlainText(w, r)
+			a.PostPlainText(w, r)
 			resp := w.Result()
 			defer resp.Body.Close()
 			assert.Equal(t, tt.wantStatus, resp.StatusCode)
