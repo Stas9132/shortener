@@ -40,3 +40,9 @@ type ListURLRecordT struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
+
+type Batch []struct {
+	CorrelationId string `json:"correlation_id"`
+	OriginalUrl   string `json:"original_url,omitempty"`
+	ShortUrl      string `json:"short_url"`
+}

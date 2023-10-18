@@ -151,3 +151,35 @@ func (a APIT) GetPing(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 }
+
+func (a APIT) PostBatch(w http.ResponseWriter, r *http.Request) {
+	var batch model.Batch
+
+	err := json.NewDecoder(r.Body).Decode(&batch)
+	if err != nil {
+		logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
+			"uri":   r.RequestURI,
+			"error": err}).
+			Warn("json.Decode")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	for i := range batch {
+		batch[i].ShortUrl, err = url.JoinPath(
+			*config.BaseURL,
+			getHash([]byte(batch[i].OriginalUrl)))
+		if err != nil {
+			logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
+				"uri":   r.RequestURI,
+				"error": err}).
+				Warn("url.JoinPath")
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		a.storage.Store(batch[i].ShortUrl, batch[i].OriginalUrl)
+		batch[i].OriginalUrl = ""
+	}
+
+	render.Status(r, http.StatusCreated)
+	render.JSON(w, r, batch)
+}
