@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"github.com/google/uuid"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"os"
 	"shortener/config"
@@ -20,6 +22,7 @@ type StorageI interface {
 	Load(key any) (value any, ok bool)
 	Store(key, value any)
 	Range(f func(key, value any) bool)
+	LoadOrStore(key, value any) (actual any, loaded bool)
 	Ping() error
 	Close() error
 }
@@ -100,11 +103,21 @@ func (s *StorageT) Store(key, value any) {
 		}
 	case len(*config.DatabaseDsn) > 0:
 		_, err := s.db.Exec("INSERT INTO shortener(short_url,original_url) values ($1, $2)", key.(string), value.(string))
-		if err != nil {
+
+		if e, ok := err.(*pgconn.PgError); ok && e.Code == pgerrcode.UniqueViolation {
+			logger.WithField("URL", value).Info("URL already exist")
+		} else if err != nil {
 			logger.WithField("error", err).
 				Warningln("Error while insert data")
 		}
+
 	}
+}
+
+func (s *StorageT) LoadOrStore(key, value any) (actual any, loaded bool) {
+	actual, loaded = s.Load(key)
+	s.Store(key, value)
+	return
 }
 
 func (s *StorageT) Range(f func(key, value any) bool) {

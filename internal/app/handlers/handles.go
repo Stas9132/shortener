@@ -67,9 +67,14 @@ func (a APIT) PostPlainText(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, e.Error(), http.StatusBadRequest)
 		return
 	}
-	a.storage.Store(shortURL, string(b))
+	_, exist := a.storage.LoadOrStore(shortURL, string(b))
+	if exist {
+		w.WriteHeader(http.StatusConflict)
+		_, _ = w.Write([]byte(shortURL))
+		return
+	}
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(shortURL))
+	_, _ = w.Write([]byte(shortURL))
 }
 
 func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
@@ -96,10 +101,15 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	a.storage.Store(shortURL, request.URL.String())
+	_, exist := a.storage.LoadOrStore(shortURL, request.URL.String())
+
 	response.Result = shortURL
+	if exist {
+		render.Status(r, http.StatusConflict)
+		render.JSON(w, r, response)
+		return
+	}
 	render.Status(r, http.StatusCreated)
-	render.JSON(w, r, response)
 }
 
 func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
