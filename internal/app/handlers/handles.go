@@ -22,6 +22,7 @@ type APII interface {
 	GetUserURLs(w http.ResponseWriter, r *http.Request)
 	GetRoot(w http.ResponseWriter, r *http.Request)
 	GetPing(w http.ResponseWriter, r *http.Request)
+	PostBatch(w http.ResponseWriter, r *http.Request)
 }
 
 type APIT struct {
