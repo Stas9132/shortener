@@ -165,9 +165,9 @@ func (a APIT) PostBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for i := range batch {
-		batch[i].ShortUrl, err = url.JoinPath(
+		batch[i].ShortURL, err = url.JoinPath(
 			*config.BaseURL,
-			getHash([]byte(batch[i].OriginalUrl)))
+			getHash([]byte(batch[i].OriginalURL)))
 		if err != nil {
 			logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
 				"uri":   r.RequestURI,
@@ -176,8 +176,8 @@ func (a APIT) PostBatch(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		a.storage.Store(batch[i].ShortUrl, batch[i].OriginalUrl)
-		batch[i].OriginalUrl = ""
+		a.storage.Store(batch[i].ShortURL, batch[i].OriginalURL)
+		batch[i].OriginalURL = ""
 	}
 
 	render.Status(r, http.StatusCreated)
