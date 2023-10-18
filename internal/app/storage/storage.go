@@ -30,16 +30,18 @@ func New() *StorageT {
 
 	switch {
 	case len(*config.DatabaseDsn) == 0:
-		b, err := os.ReadFile(*config.FileStoragePath)
-		if err != nil {
-			logger.WithField("error", err).Errorln("Error while read file")
-		}
-		var fd []FileStorageRecordT
-		if err = json.Unmarshal(b, &fd); err != nil {
-			logger.WithField("error", err).Errorln("Error while unmarshal json")
-		}
-		for _, record := range fd {
-			c[record.ShortURL] = record.OriginalURL
+		if len(*config.FileStoragePath) > 0 {
+			b, err := os.ReadFile(*config.FileStoragePath)
+			if err != nil {
+				logger.WithField("error", err).Errorln("Error while read file")
+			}
+			var fd []FileStorageRecordT
+			if err = json.Unmarshal(b, &fd); err != nil {
+				logger.WithField("error", err).Errorln("Error while unmarshal json")
+			}
+			for _, record := range fd {
+				c[record.ShortURL] = record.OriginalURL
+			}
 		}
 	case len(*config.DatabaseDsn) > 0:
 		db, err := sql.Open("pgx", *config.DatabaseDsn)
@@ -75,24 +77,26 @@ func (s *StorageT) Store(key, value any) {
 	switch {
 	case len(*config.DatabaseDsn) == 0:
 		s.cache[key] = value
-		b, err := os.ReadFile(*config.FileStoragePath)
-		if err != nil {
-			logger.WithField("error", err).Errorln("Error while read file")
-		}
-		var fd []FileStorageRecordT
-		if err = json.Unmarshal(b, &fd); err != nil {
-			logger.WithField("error", err).Errorln("Error while unmarshal json")
-		}
-		fd = append(fd, FileStorageRecordT{
-			UUID:        uuid.NewString(),
-			ShortURL:    key.(string),
-			OriginalURL: value.(string),
-		})
-		if b, err = json.Marshal(fd); err != nil {
-			logger.WithField("error", err).Errorln("Error while marshal json")
-		}
-		if err = os.WriteFile(*config.FileStoragePath, b, 0644); err != nil {
-			logger.WithField("error", err).Errorln("Error while write file")
+		if len(*config.FileStoragePath) > 0 {
+			b, err := os.ReadFile(*config.FileStoragePath)
+			if err != nil {
+				logger.WithField("error", err).Errorln("Error while read file")
+			}
+			var fd []FileStorageRecordT
+			if err = json.Unmarshal(b, &fd); err != nil {
+				logger.WithField("error", err).Errorln("Error while unmarshal json")
+			}
+			fd = append(fd, FileStorageRecordT{
+				UUID:        uuid.NewString(),
+				ShortURL:    key.(string),
+				OriginalURL: value.(string),
+			})
+			if b, err = json.Marshal(fd); err != nil {
+				logger.WithField("error", err).Errorln("Error while marshal json")
+			}
+			if err = os.WriteFile(*config.FileStoragePath, b, 0644); err != nil {
+				logger.WithField("error", err).Errorln("Error while write file")
+			}
 		}
 	case len(*config.DatabaseDsn) > 0:
 		_, err := s.db.Exec("INSERT INTO shortener(short_url,original_url) values ($1, $2)", key.(string), value.(string))
