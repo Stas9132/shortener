@@ -74,6 +74,7 @@ func (s *StorageT) Load(key any) (value any, ok bool) {
 func (s *StorageT) Store(key, value any) {
 	switch {
 	case len(*config.DatabaseDsn) == 0:
+		s.cache[key] = value
 		b, err := os.ReadFile(*config.FileStoragePath)
 		if err != nil {
 			logger.WithField("error", err).Errorln("Error while read file")
@@ -112,7 +113,7 @@ func (s *StorageT) Range(f func(key, value any) bool) {
 		}
 	case len(*config.DatabaseDsn) > 0:
 		rows, err := s.db.Query("SELECT short_url, original_url FROM shortener")
-		if err != nil {
+		if err != nil || rows.Err() != nil {
 			logger.WithField("error", err).
 				Warningln("Error while select data")
 		}
