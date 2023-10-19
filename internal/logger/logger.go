@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"context"
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"log"
@@ -67,7 +68,7 @@ var Tracef,
 		fmt.Printf("\n")
 	}
 
-func Init() {
+func Init(ctx context.Context) {
 	lvl, err := logrus.ParseLevel(*config.LogLevel)
 	if err != nil {
 		log.Fatal(err)

@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"github.com/google/uuid"
@@ -13,9 +14,10 @@ import (
 )
 
 type StorageT struct {
-	cache map[any]any
-	file  struct{}
-	db    *sql.DB
+	appCtx context.Context
+	cache  map[any]any
+	file   struct{}
+	db     *sql.DB
 }
 
 type StorageI interface {
@@ -27,7 +29,7 @@ type StorageI interface {
 	Close() error
 }
 
-func New() *StorageT {
+func New(ctx context.Context) *StorageT {
 	c := make(map[any]any)
 	var d *sql.DB
 
@@ -55,9 +57,10 @@ func New() *StorageT {
 		_, _ = db.Exec("create table shortener(id serial primary key , short_url varchar(255) unique not null, original_url varchar(255))")
 	}
 	return &StorageT{
-		cache: c,
-		file:  struct{}{},
-		db:    d,
+		appCtx: ctx,
+		cache:  c,
+		file:   struct{}{},
+		db:     d,
 	}
 }
 
@@ -66,7 +69,7 @@ func (s *StorageT) Load(key any) (value any, ok bool) {
 	case len(*config.DatabaseDsn) == 0:
 		value, ok = s.cache[key]
 	case len(*config.DatabaseDsn) > 0:
-		err := s.db.QueryRow("SELECT original_url FROM shortener WHERE short_url = $1", key.(string)).
+		err := s.db.QueryRowContext(s.appCtx, "SELECT original_url FROM shortener WHERE short_url = $1", key.(string)).
 			Scan(&value)
 		if err != nil {
 			return "", false
@@ -102,7 +105,7 @@ func (s *StorageT) Store(key, value any) {
 			}
 		}
 	case len(*config.DatabaseDsn) > 0:
-		_, err := s.db.Exec("INSERT INTO shortener(short_url,original_url) values ($1, $2)", key.(string), value.(string))
+		_, err := s.db.ExecContext(s.appCtx, "INSERT INTO shortener(short_url,original_url) values ($1, $2)", key.(string), value.(string))
 
 		if e, ok := err.(*pgconn.PgError); ok && e.Code == pgerrcode.UniqueViolation {
 			logger.WithField("URL", value).Info("URL already exist")
@@ -129,7 +132,7 @@ func (s *StorageT) Range(f func(key, value any) bool) {
 			}
 		}
 	case len(*config.DatabaseDsn) > 0:
-		rows, err := s.db.Query("SELECT short_url, original_url FROM shortener")
+		rows, err := s.db.QueryContext(s.appCtx, "SELECT short_url, original_url FROM shortener")
 		if err != nil || rows.Err() != nil {
 			logger.WithField("error", err).
 				Warningln("Error while select data")

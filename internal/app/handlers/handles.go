@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
@@ -29,7 +30,7 @@ type APIT struct {
 	storage strg.StorageI
 }
 
-func NewAPI(storage strg.StorageI) APIT {
+func NewAPI(ctx context.Context, storage strg.StorageI) APIT {
 	return APIT{storage: storage}
 }
 

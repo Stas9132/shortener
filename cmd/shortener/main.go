@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"errors"
 	"github.com/go-chi/chi/v5"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -46,7 +48,12 @@ func run(h handlers.APII) {
 	mRouter(h)
 
 	if err := server().ListenAndServe(); err != nil {
-		log.Println(err)
+		t := &net.OpError{}
+		if errors.As(err, &t) {
+			log.Fatal(err)
+		} else {
+			log.Println(err)
+		}
 	}
 }
 
@@ -54,10 +61,10 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	config.Init()
-	logger.Init()
-	st := storage.New()
-	h := handlers.NewAPI(st)
+	config.Init(ctx)
+	logger.Init(ctx)
+	st := storage.New(ctx)
+	h := handlers.NewAPI(ctx, st)
 	go run(h)
 
 	<-ctx.Done()
@@ -66,4 +73,5 @@ func main() {
 	defer can2()
 	server().Shutdown(ctx2)
 	st.Close()
+	time.Sleep(time.Second)
 }

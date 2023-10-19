@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"github.com/go-chi/chi/v5"
@@ -26,8 +27,8 @@ var _ = func() bool {
 	return true
 }()
 
-var storage = strg.New()
-var api = NewAPI(storage)
+var storage = strg.New(context.Background())
+var api = NewAPI(context.Background(), storage)
 
 func Test_getHash(t *testing.T) {
 	type args struct {
@@ -147,8 +148,8 @@ got status BadRequest`,
 }
 
 func TestPostPlainText(t *testing.T) {
-	s := strg.New()
-	a := NewAPI(s)
+	s := strg.New(context.Background())
+	a := NewAPI(context.Background(), s)
 	type args struct {
 		body io.Reader
 	}
@@ -276,8 +277,8 @@ got status BadRequest`,
 }
 
 func TestGetUserURLs(t *testing.T) {
-	s := strg.New()
-	a := NewAPI(s)
+	s := strg.New(context.Background())
+	a := NewAPI(context.Background(), s)
 	srv := httptest.NewServer(http.HandlerFunc(a.GetUserURLs))
 	defer srv.Close()
 	tests := []struct {
