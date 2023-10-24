@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"shortener/config"
 	"shortener/internal/app/model"
-	strg "shortener/internal/app/storage"
 	"shortener/internal/logger"
 )
 
@@ -26,12 +25,22 @@ type APII interface {
 	PostBatch(w http.ResponseWriter, r *http.Request)
 }
 
-type APIT struct {
-	storage strg.StorageI
+type StorageI interface {
+	Load(key any) (value any, ok bool)
+	Store(key, value any)
+	Range(f func(key, value any) bool)
+	LoadOrStore(key, value any) (actual any, loaded bool)
+	Ping() error
+	Close() error
 }
 
-func NewAPI(ctx context.Context, storage strg.StorageI) APIT {
-	return APIT{storage: storage}
+type APIT struct {
+	storage StorageI
+	logger  logger.Logger
+}
+
+func NewAPI(ctx context.Context, l logger.Logger, storage StorageI) APIT {
+	return APIT{storage: storage, logger: l}
 }
 
 func getHash(b []byte) string {
@@ -50,7 +59,7 @@ func (a APIT) Default(w http.ResponseWriter, r *http.Request) {
 func (a APIT) PostPlainText(w http.ResponseWriter, r *http.Request) {
 	b, e := io.ReadAll(r.Body)
 	if e != nil {
-		logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
+		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
 			"uri":   r.RequestURI,
 			"error": e}).
 			Warn("io.ReadAll error")
@@ -61,7 +70,7 @@ func (a APIT) PostPlainText(w http.ResponseWriter, r *http.Request) {
 		*config.BaseURL,
 		getHash(b))
 	if e != nil {
-		logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
+		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
 			"uri":   r.RequestURI,
 			"error": e}).
 			Warn("url.JoinPath error")
@@ -84,7 +93,7 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
-		logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
+		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
 			"uri":   r.RequestURI,
 			"error": err}).
 			Warn("json.Decode")
@@ -95,7 +104,7 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 		*config.BaseURL,
 		getHash([]byte(request.URL.String())))
 	if err != nil {
-		logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
+		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
 			"uri":   r.RequestURI,
 			"error": err}).
 			Warn("url.JoinPath")
@@ -138,7 +147,7 @@ func (a APIT) GetRoot(w http.ResponseWriter, r *http.Request) {
 		*config.BaseURL,
 		chi.URLParam(r, "sn"))
 	if e != nil {
-		logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
+		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
 			"uri":   r.RequestURI,
 			"error": e}).
 			Warn("url.JoinPath")
@@ -170,7 +179,7 @@ func (a APIT) PostBatch(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&batch)
 	if err != nil {
-		logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
+		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
 			"uri":   r.RequestURI,
 			"error": err}).
 			Warn("json.Decode")
@@ -182,7 +191,7 @@ func (a APIT) PostBatch(w http.ResponseWriter, r *http.Request) {
 			*config.BaseURL,
 			getHash([]byte(batch[i].OriginalURL)))
 		if err != nil {
-			logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
+			a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
 				"uri":   r.RequestURI,
 				"error": err}).
 				Warn("url.JoinPath")

@@ -16,6 +16,7 @@ import (
 	"shortener/config"
 	"shortener/internal/app/model"
 	strg "shortener/internal/app/storage"
+	"shortener/internal/logger"
 	"strconv"
 	"strings"
 	"testing"
@@ -27,8 +28,8 @@ var _ = func() bool {
 	return true
 }()
 
-var storage = strg.New(context.Background())
-var api = NewAPI(context.Background(), storage)
+var storage = strg.NewFileStorage(context.Background(), logger.NewDummy())
+var api = NewAPI(context.Background(), logger.NewDummy(), storage)
 
 func Test_getHash(t *testing.T) {
 	type args struct {
@@ -148,8 +149,8 @@ got status BadRequest`,
 }
 
 func TestPostPlainText(t *testing.T) {
-	s := strg.New(context.Background())
-	a := NewAPI(context.Background(), s)
+	s := strg.NewFileStorage(context.Background(), logger.NewDummy())
+	a := NewAPI(context.Background(), logger.NewDummy(), s)
 	type args struct {
 		body io.Reader
 	}
@@ -277,8 +278,8 @@ got status BadRequest`,
 }
 
 func TestGetUserURLs(t *testing.T) {
-	s := strg.New(context.Background())
-	a := NewAPI(context.Background(), s)
+	s := strg.NewFileStorage(context.Background(), logger.NewDummy())
+	a := NewAPI(context.Background(), logger.NewDummy(), s)
 	srv := httptest.NewServer(http.HandlerFunc(a.GetUserURLs))
 	defer srv.Close()
 	tests := []struct {

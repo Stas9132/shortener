@@ -21,6 +21,8 @@ type Logger interface {
 	Warnf(string, ...interface{})
 	Error(...interface{})
 	Errorf(string, ...interface{})
+	WithField(key string, value interface{}) *logrus.Entry
+	WithFields(fields logrus.Fields) *logrus.Entry
 }
 type Log func(l ...interface{})
 type Logf func(s string, l ...interface{})
@@ -68,10 +70,11 @@ var Tracef,
 		fmt.Printf("\n")
 	}
 
-func Init(ctx context.Context) {
+func NewLogger(ctx context.Context) Logger {
 	lvl, err := logrus.ParseLevel(*config.LogLevel)
 	if err != nil {
 		log.Fatal(err)
 	}
 	logger.SetLevel(lvl)
+	return logger
 }

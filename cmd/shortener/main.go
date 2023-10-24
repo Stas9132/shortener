@@ -62,9 +62,14 @@ func main() {
 	defer stop()
 
 	config.Init(ctx)
-	logger.Init(ctx)
-	st := storage.New(ctx)
-	h := handlers.NewAPI(ctx, st)
+	l := logger.NewLogger(ctx)
+	var st handlers.StorageI
+	if len(*config.DatabaseDsn) == 0 {
+		st = storage.NewFileStorage(ctx, l)
+	} else {
+		st = storage.NewDB(ctx, l)
+	}
+	h := handlers.NewAPI(ctx, l, st)
 	go run(h)
 
 	<-ctx.Done()

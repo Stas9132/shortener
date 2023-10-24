@@ -12,34 +12,34 @@ import (
 
 type FileStorageT struct {
 	appCtx context.Context
+	logger logger.Logger
 	cache  map[any]any
-	file   struct {
-		isPresent bool
-	}
+	file   *os.File
 }
 
-func NewFileStorage(ctx context.Context) *FileStorageT {
+func NewFileStorage(ctx context.Context, l logger.Logger) *FileStorageT {
 	c := make(map[any]any)
-	var pf bool
+	var f *os.File
 
 	if len(*config.FileStoragePath) > 0 {
-		b, err := os.ReadFile(*config.FileStoragePath)
+		var err error
+		f, err = os.OpenFile(*config.FileStoragePath, os.O_CREATE|os.O_RDWR, 0644)
 		if err != nil {
-			logger.WithField("error", err).Errorln("Error while read file")
+			logger.WithField("error", err).Errorln("Error while open file")
 		}
 		var fd []FileStorageRecordT
-		if err = json.Unmarshal(b, &fd); err != nil {
+		if err = json.NewDecoder(f).Decode(&fd); err != nil {
 			logger.WithField("error", err).Errorln("Error while unmarshal json")
 		}
 		for _, record := range fd {
 			c[record.ShortURL] = record.OriginalURL
 		}
-		pf = true
 	}
 	return &FileStorageT{
 		appCtx: ctx,
+		logger: l,
 		cache:  c,
-		file:   struct{ isPresent bool }{isPresent: pf},
+		file:   f,
 	}
 }
 
@@ -50,25 +50,24 @@ func (s *FileStorageT) Load(key any) (value any, ok bool) {
 
 func (s *FileStorageT) Store(key, value any) {
 	s.cache[key] = value
-	if s.file.isPresent {
-		b, err := os.ReadFile(*config.FileStoragePath)
-		if err != nil {
-			logger.WithField("error", err).Errorln("Error while read file")
+	if s.file != nil {
+		if _, err := s.file.Seek(0, 0); err != nil {
+			s.logger.WithField("error", err).Errorln("Error while seek file")
 		}
 		var fd []FileStorageRecordT
-		if err = json.Unmarshal(b, &fd); err != nil {
-			logger.WithField("error", err).Errorln("Error while unmarshal json")
+		if err := json.NewDecoder(s.file).Decode(&fd); err != nil {
+			s.logger.WithField("error", err).Errorln("Error while unmarshal json")
 		}
 		fd = append(fd, FileStorageRecordT{
 			UUID:        uuid.NewString(),
 			ShortURL:    key.(string),
 			OriginalURL: value.(string),
 		})
-		if b, err = json.Marshal(fd); err != nil {
-			logger.WithField("error", err).Errorln("Error while marshal json")
+		if _, err := s.file.Seek(0, 0); err != nil {
+			s.logger.WithField("error", err).Errorln("Error while seek file")
 		}
-		if err = os.WriteFile(*config.FileStoragePath, b, 0644); err != nil {
-			logger.WithField("error", err).Errorln("Error while write file")
+		if err := json.NewEncoder(s.file).Encode(fd); err != nil {
+			s.logger.WithField("error", err).Errorln("Error while marshal json")
 		}
 	}
 }
@@ -88,7 +87,7 @@ func (s *FileStorageT) Range(f func(key, value any) bool) {
 }
 
 func (s *FileStorageT) Close() error {
-	return nil
+	return s.file.Close()
 }
 
 func (s *FileStorageT) Ping() error {
