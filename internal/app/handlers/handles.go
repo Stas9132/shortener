@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
@@ -11,7 +12,6 @@ import (
 	"net/url"
 	"shortener/config"
 	"shortener/internal/app/model"
-	strg "shortener/internal/app/storage"
 	"shortener/internal/logger"
 )
 
@@ -21,14 +21,26 @@ type APII interface {
 	PostJSON(w http.ResponseWriter, r *http.Request)
 	GetUserURLs(w http.ResponseWriter, r *http.Request)
 	GetRoot(w http.ResponseWriter, r *http.Request)
+	GetPing(w http.ResponseWriter, r *http.Request)
+	PostBatch(w http.ResponseWriter, r *http.Request)
+}
+
+type StorageI interface {
+	Load(key any) (value any, ok bool)
+	Store(key, value any)
+	Range(f func(key, value any) bool)
+	LoadOrStore(key, value any) (actual any, loaded bool)
+	Ping() error
+	Close() error
 }
 
 type APIT struct {
-	storage strg.StorageI
+	storage StorageI
+	logger  logger.Logger
 }
 
-func NewAPI(storage strg.StorageI) APIT {
-	return APIT{storage: storage}
+func NewAPI(ctx context.Context, l logger.Logger, storage StorageI) APIT {
+	return APIT{storage: storage, logger: l}
 }
 
 func getHash(b []byte) string {
@@ -47,7 +59,7 @@ func (a APIT) Default(w http.ResponseWriter, r *http.Request) {
 func (a APIT) PostPlainText(w http.ResponseWriter, r *http.Request) {
 	b, e := io.ReadAll(r.Body)
 	if e != nil {
-		logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
+		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
 			"uri":   r.RequestURI,
 			"error": e}).
 			Warn("io.ReadAll error")
@@ -58,16 +70,21 @@ func (a APIT) PostPlainText(w http.ResponseWriter, r *http.Request) {
 		*config.BaseURL,
 		getHash(b))
 	if e != nil {
-		logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
+		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
 			"uri":   r.RequestURI,
 			"error": e}).
 			Warn("url.JoinPath error")
 		http.Error(w, e.Error(), http.StatusBadRequest)
 		return
 	}
-	a.storage.Store(shortURL, string(b))
+	_, exist := a.storage.LoadOrStore(shortURL, string(b))
+	if exist {
+		w.WriteHeader(http.StatusConflict)
+		_, _ = w.Write([]byte(shortURL))
+		return
+	}
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(shortURL))
+	_, _ = w.Write([]byte(shortURL))
 }
 
 func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +93,7 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
-		logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
+		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
 			"uri":   r.RequestURI,
 			"error": err}).
 			Warn("json.Decode")
@@ -87,15 +104,21 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 		*config.BaseURL,
 		getHash([]byte(request.URL.String())))
 	if err != nil {
-		logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
+		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
 			"uri":   r.RequestURI,
 			"error": err}).
 			Warn("url.JoinPath")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	a.storage.Store(shortURL, request.URL.String())
+	_, exist := a.storage.LoadOrStore(shortURL, request.URL.String())
+
 	response.Result = shortURL
+	if exist {
+		render.Status(r, http.StatusConflict)
+		render.JSON(w, r, response)
+		return
+	}
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, response)
 }
@@ -124,7 +147,7 @@ func (a APIT) GetRoot(w http.ResponseWriter, r *http.Request) {
 		*config.BaseURL,
 		chi.URLParam(r, "sn"))
 	if e != nil {
-		logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
+		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
 			"uri":   r.RequestURI,
 			"error": e}).
 			Warn("url.JoinPath")
@@ -140,4 +163,45 @@ func (a APIT) GetRoot(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Location", s.(string))
 	w.WriteHeader(http.StatusTemporaryRedirect)
 	w.Write([]byte(s.(string)))
+}
+
+func (a APIT) GetPing(w http.ResponseWriter, r *http.Request) {
+	err := a.storage.Ping()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func (a APIT) PostBatch(w http.ResponseWriter, r *http.Request) {
+	var batch model.Batch
+
+	err := json.NewDecoder(r.Body).Decode(&batch)
+	if err != nil {
+		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
+			"uri":   r.RequestURI,
+			"error": err}).
+			Warn("json.Decode")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	for i := range batch {
+		batch[i].ShortURL, err = url.JoinPath(
+			*config.BaseURL,
+			getHash([]byte(batch[i].OriginalURL)))
+		if err != nil {
+			a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
+				"uri":   r.RequestURI,
+				"error": err}).
+				Warn("url.JoinPath")
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		a.storage.Store(batch[i].ShortURL, batch[i].OriginalURL)
+		batch[i].OriginalURL = ""
+	}
+
+	render.Status(r, http.StatusCreated)
+	render.JSON(w, r, batch)
 }

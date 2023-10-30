@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"github.com/go-chi/chi/v5"
@@ -15,6 +16,7 @@ import (
 	"shortener/config"
 	"shortener/internal/app/model"
 	strg "shortener/internal/app/storage"
+	"shortener/internal/logger"
 	"strconv"
 	"strings"
 	"testing"
@@ -26,8 +28,8 @@ var _ = func() bool {
 	return true
 }()
 
-var storage = strg.New()
-var api = NewAPI(storage)
+var storage = strg.NewFileStorage(context.Background(), logger.NewDummy())
+var api = NewAPI(context.Background(), logger.NewDummy(), storage)
 
 func Test_getHash(t *testing.T) {
 	type args struct {
@@ -38,15 +40,21 @@ func Test_getHash(t *testing.T) {
 		args args
 		want string
 	}{{
-		name: `"Hash: "" - empty string"`,
+		name: `Test getHash function - compare with reference value
+send: "" - empty string
+got: hash`,
 		args: struct{ b []byte }{b: nil},
 		want: "389589f3",
 	}, {
-		name: `Hash: "https://yandex.ru/"`,
+		name: `Test getHash function - compare with reference value
+send: "https://yandex.ru/"
+got: hash`,
 		args: struct{ b []byte }{b: []byte("https://yandex.ru/")},
 		want: "1e320d4f",
 	}, {
-		name: `Hash: "https://go.dev/"`,
+		name: `Test getHash function - compare with reference value
+send: "https://go.dev/"
+got: hash`,
 		args: struct{ b []byte }{b: []byte("https://go.dev/")},
 		want: "e4546b92",
 	}}
@@ -80,18 +88,30 @@ func TestHandlerAndStorage(t *testing.T) {
 		wantStatus int
 		wantBody   []byte
 	}{{
-		name:       `Success: POST "https://go.dev/" -> hash("https://go.dev/")`,
+		name: ` Create new short URL
+send correct URL
+got: 
+- response shorturl
+- status created`,
 		args:       args{method: http.MethodPost, path: "/", body: strings.NewReader("https://go.dev/")},
 		memSlot:    "1",
 		wantStatus: http.StatusCreated,
 		wantBody:   []byte("e4546b92"),
 	}, {
-		name:       `Success: GET hash("https://go.dev/") -> "https://go.dev/"`,
+		name: `Get original URL from short
+send: 
+- correct URL
+- shortURL from previous step
+got: 
+- response original URL
+- status TemporaryRedirect`,
 		args:       args{method: http.MethodGet, path: "1", body: nil},
 		wantStatus: http.StatusTemporaryRedirect,
 		wantBody:   []byte("https://go.dev/"),
 	}, {
-		name:       "Wrong PUT: rejected by router",
+		name: `Wrong PUT: rejected by router
+send request with wrong method
+got status BadRequest`,
 		args:       args{method: http.MethodPut, path: "/", body: nil},
 		wantStatus: http.StatusBadRequest,
 		wantBody:   []byte{},
@@ -129,6 +149,8 @@ func TestHandlerAndStorage(t *testing.T) {
 }
 
 func TestPostPlainText(t *testing.T) {
+	s := strg.NewFileStorage(context.Background(), logger.NewDummy())
+	a := NewAPI(context.Background(), logger.NewDummy(), s)
 	type args struct {
 		body io.Reader
 	}
@@ -137,15 +159,23 @@ func TestPostPlainText(t *testing.T) {
 		args       args
 		wantStatus int
 	}{{
-		name:       `Success POST "https://go.dev/"`,
+		name: `Success POST: 
+send correct URL
+got status Created`,
 		args:       args{body: strings.NewReader("https://go.dev/")},
 		wantStatus: http.StatusCreated,
 	}, {
-		name:       `#1 Error on io.ReadALL `,
+		name: `#1 Error on io.ReadALL
+send bad request
+set io.error
+got status BadRequest`,
 		args:       args{body: strings.NewReader("https://go.dev/")},
 		wantStatus: http.StatusBadRequest,
 	}, {
-		name:       `#2 Error on url.Join `,
+		name: `#2 Error on url.Join
+send correct URL
+set bad config variables
+got status BadRequest`,
 		args:       args{body: strings.NewReader("https://go.dev/")},
 		wantStatus: http.StatusBadRequest,
 	}}
@@ -164,14 +194,14 @@ func TestPostPlainText(t *testing.T) {
 			}
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPost, "http://localhost/", tt.args.body)
-			api.PostPlainText(w, r)
+			a.PostPlainText(w, r)
 			resp := w.Result()
 			defer resp.Body.Close()
 			assert.Equal(t, tt.wantStatus, resp.StatusCode)
 			if resp.StatusCode == http.StatusCreated {
 				b, err := io.ReadAll(resp.Body)
 				require.NoError(t, err)
-				_, ok := storage.Load(string(b))
+				_, ok := s.Load(string(b))
 				assert.True(t, ok)
 			}
 		})
@@ -185,22 +215,34 @@ func TestPostJSON(t *testing.T) {
 		wantStatus int
 		wantBody   string
 	}{{
-		name:       "Success",
+		name: `Success
+send correct request
+got
+- status Created
+- shortURL`,
 		body:       strings.NewReader(`{"url":"http://www.yandex.ru"}`),
 		wantStatus: http.StatusCreated,
 		wantBody:   `{"result":"http://localhost:8080/86e99165"}`,
 	}, {
-		name:       "Bad JSON",
+		name: `Bad JSON
+send correct request
+got status BadRequest`,
 		body:       strings.NewReader(`{url":"http://www.yandex.ru"}`),
 		wantStatus: http.StatusBadRequest,
 		wantBody:   ``,
 	}, {
-		name:       "#1 io error on json.decode",
+		name: `#1 io error on json.decode
+send correct url
+set io.error
+got status BadRequest`,
 		body:       strings.NewReader(`{url":"http://www.yandex.ru"}`),
 		wantStatus: http.StatusBadRequest,
 		wantBody:   ``,
 	}, {
-		name:       "#2 Error on url.Join",
+		name: `#2 Error on url.Join
+send correct url
+set bad config variables
+got status BadRequest`,
 		body:       strings.NewReader(`{url":"http://www.yandex.ru"}`),
 		wantStatus: http.StatusBadRequest,
 		wantBody:   ``,
@@ -236,35 +278,50 @@ func TestPostJSON(t *testing.T) {
 }
 
 func TestGetUserURLs(t *testing.T) {
-	s := strg.New()
-	a := NewAPI(s)
+	s := strg.NewFileStorage(context.Background(), logger.NewDummy())
+	a := NewAPI(context.Background(), logger.NewDummy(), s)
 	srv := httptest.NewServer(http.HandlerFunc(a.GetUserURLs))
 	defer srv.Close()
 	tests := []struct {
 		name       string
 		wantStatus int
-		wantBody   []byte
 	}{{
-		name:       "Empty storage",
+		name: `Empty storage
+send get request
+got status NoContent`,
 		wantStatus: http.StatusNoContent,
-		wantBody:   []byte(""),
 	}, {
-		name:       "One_record_not_work",
-		wantStatus: http.StatusNoContent,
-		wantBody:   []byte(""),
+		name: `One_record
+send get request
+got 
+status OK
+list with one record`,
+		wantStatus: http.StatusOK,
+	}, {
+		name: `Two record
+send get request
+got 
+status OK
+list with two record`,
+		wantStatus: http.StatusOK,
 	}}
 
-	for _, tt := range tests {
+	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resp, err := http.Get(srv.URL)
+			req, err := http.NewRequest(http.MethodGet, srv.URL, nil)
+			require.NoError(t, err)
+			req.Header.Set("Accept-Encoding", "identity")
+			resp, err := (&http.Client{}).Do(req)
+			s.Store(uuid.NewString(), "ok")
 			require.NoError(t, err)
 			defer resp.Body.Close()
-			assert.Equal(t, tt.wantStatus, resp.StatusCode)
-			b, err := io.ReadAll(resp.Body)
-			require.NoError(t, err)
-			assert.Equal(t, tt.wantBody, b)
-			u := uuid.NewString()
-			s.Store(u, "ok")
+			require.Equal(t, tt.wantStatus, resp.StatusCode)
+			if resp.StatusCode == http.StatusOK {
+				var v []any
+				err = json.NewDecoder(resp.Body).Decode(&v)
+				require.NoError(t, err)
+				require.Equal(t, i, len(v))
+			}
 		})
 	}
 }

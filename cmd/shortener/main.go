@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"errors"
 	"github.com/go-chi/chi/v5"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -30,7 +32,9 @@ func mRouter(handler handlers.APII) {
 	r.Post("/", handler.PostPlainText)
 	r.Get("/{sn}", handler.GetRoot)
 	r.Post("/api/shorten", handler.PostJSON)
+	r.Post("/api/shorten/batch", handler.PostBatch)
 	r.Get("/api/user/urls", handler.GetUserURLs)
+	r.Get("/ping", handler.GetPing)
 	r.NotFound(handler.Default)
 	r.MethodNotAllowed(handler.Default)
 	http.Handle("/", r)
@@ -44,7 +48,12 @@ func run(h handlers.APII) {
 	mRouter(h)
 
 	if err := server().ListenAndServe(); err != nil {
-		log.Println(err)
+		t := &net.OpError{}
+		if errors.As(err, &t) {
+			log.Fatal(err)
+		} else {
+			log.Println(err)
+		}
 	}
 }
 
@@ -52,10 +61,15 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	config.Init()
-	logger.Init()
-	st := storage.New()
-	h := handlers.NewAPI(st)
+	config.Init(ctx)
+	l := logger.NewLogger(ctx)
+	var st handlers.StorageI
+	if len(*config.DatabaseDsn) == 0 {
+		st = storage.NewFileStorage(ctx, l)
+	} else {
+		st = storage.NewDB(ctx, l)
+	}
+	h := handlers.NewAPI(ctx, l, st)
 	go run(h)
 
 	<-ctx.Done()
@@ -64,4 +78,5 @@ func main() {
 	defer can2()
 	server().Shutdown(ctx2)
 	st.Close()
+	time.Sleep(time.Second)
 }
