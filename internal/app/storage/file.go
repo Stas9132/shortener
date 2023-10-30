@@ -13,12 +13,12 @@ import (
 type FileStorageT struct {
 	appCtx context.Context
 	logger logger.Logger
-	cache  map[any]any
+	cache  map[string]string
 	file   *os.File
 }
 
 func NewFileStorage(ctx context.Context, l logger.Logger) *FileStorageT {
-	c := make(map[any]any)
+	c := make(map[string]string)
 	var f *os.File
 
 	if len(*config.FileStoragePath) > 0 {
@@ -43,12 +43,12 @@ func NewFileStorage(ctx context.Context, l logger.Logger) *FileStorageT {
 	}
 }
 
-func (s *FileStorageT) Load(key any) (value any, ok bool) {
+func (s *FileStorageT) Load(key string) (value string, ok bool) {
 	value, ok = s.cache[key]
 	return
 }
 
-func (s *FileStorageT) Store(key, value any) {
+func (s *FileStorageT) Store(key, value string) {
 	s.cache[key] = value
 	if s.file != nil {
 		if _, err := s.file.Seek(0, 0); err != nil {
@@ -60,8 +60,8 @@ func (s *FileStorageT) Store(key, value any) {
 		}
 		fd = append(fd, FileStorageRecordT{
 			UUID:        uuid.NewString(),
-			ShortURL:    key.(string),
-			OriginalURL: value.(string),
+			ShortURL:    key,
+			OriginalURL: value,
 		})
 		if _, err := s.file.Seek(0, 0); err != nil {
 			s.logger.WithField("error", err).Errorln("Error while seek file")
@@ -72,13 +72,13 @@ func (s *FileStorageT) Store(key, value any) {
 	}
 }
 
-func (s *FileStorageT) LoadOrStore(key, value any) (actual any, loaded bool) {
+func (s *FileStorageT) LoadOrStore(key, value string) (actual string, loaded bool) {
 	actual, loaded = s.Load(key)
 	s.Store(key, value)
 	return
 }
 
-func (s *FileStorageT) Range(f func(key, value any) bool) {
+func (s *FileStorageT) Range(f func(key, value string) bool) {
 	for k, v := range s.cache {
 		if !f(k, v) {
 			break

@@ -28,8 +28,8 @@ func NewDB(ctx context.Context, l logger.Logger) *DBT {
 	}
 }
 
-func (s *DBT) Load(key any) (value any, ok bool) {
-	err := s.db.QueryRowContext(s.appCtx, "SELECT original_url FROM shortener WHERE short_url = $1", key.(string)).
+func (s *DBT) Load(key string) (value string, ok bool) {
+	err := s.db.QueryRowContext(s.appCtx, "SELECT original_url FROM shortener WHERE short_url = $1", key).
 		Scan(&value)
 	if err != nil {
 		return "", false
@@ -38,8 +38,8 @@ func (s *DBT) Load(key any) (value any, ok bool) {
 	return
 }
 
-func (s *DBT) Store(key, value any) {
-	_, err := s.db.ExecContext(s.appCtx, "INSERT INTO shortener(short_url,original_url) values ($1, $2)", key.(string), value.(string))
+func (s *DBT) Store(key, value string) {
+	_, err := s.db.ExecContext(s.appCtx, "INSERT INTO shortener(short_url,original_url) values ($1, $2)", key, value)
 
 	if e, ok := err.(*pgconn.PgError); ok && e.Code == pgerrcode.UniqueViolation {
 		s.logger.WithField("URL", value).Info("URL already exist")
@@ -50,13 +50,13 @@ func (s *DBT) Store(key, value any) {
 
 }
 
-func (s *DBT) LoadOrStore(key, value any) (actual any, loaded bool) {
+func (s *DBT) LoadOrStore(key, value string) (actual string, loaded bool) {
 	actual, loaded = s.Load(key)
 	s.Store(key, value)
 	return
 }
 
-func (s *DBT) Range(f func(key, value any) bool) {
+func (s *DBT) Range(f func(key, value string) bool) {
 	rows, err := s.db.QueryContext(s.appCtx, "SELECT short_url, original_url FROM shortener")
 	if err != nil || rows.Err() != nil {
 		s.logger.WithField("error", err).

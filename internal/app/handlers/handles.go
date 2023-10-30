@@ -26,10 +26,10 @@ type APII interface {
 }
 
 type StorageI interface {
-	Load(key any) (value any, ok bool)
-	Store(key, value any)
-	Range(f func(key, value any) bool)
-	LoadOrStore(key, value any) (actual any, loaded bool)
+	Load(key string) (value string, ok bool)
+	Store(key, value string)
+	Range(f func(key, value string) bool)
+	LoadOrStore(key, value string) (actual string, loaded bool)
 	Ping() error
 	Close() error
 }
@@ -125,10 +125,10 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 
 func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	var lu model.ListURLs
-	a.storage.Range(func(key, value any) bool {
+	a.storage.Range(func(key, value string) bool {
 		lu = append(lu, model.ListURLRecordT{
-			ShortURL:    key.(string),
-			OriginalURL: value.(string),
+			ShortURL:    key,
+			OriginalURL: value,
 		})
 		return true
 	})
@@ -160,9 +160,9 @@ func (a APIT) GetRoot(w http.ResponseWriter, r *http.Request) {
 		render.NoContent(w, r)
 		return
 	}
-	w.Header().Set("Location", s.(string))
+	w.Header().Set("Location", s)
 	w.WriteHeader(http.StatusTemporaryRedirect)
-	w.Write([]byte(s.(string)))
+	w.Write([]byte(s))
 }
 
 func (a APIT) GetPing(w http.ResponseWriter, r *http.Request) {
