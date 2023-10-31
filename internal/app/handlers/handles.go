@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"shortener/config"
@@ -78,7 +79,6 @@ func (a APIT) PostPlainText(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_, exist := a.storage.LoadOrStore(shortURL, string(b))
-	w.Header().Set("Authorization", shortURL)
 
 	if exist {
 		w.WriteHeader(http.StatusConflict)
@@ -116,7 +116,6 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 	_, exist := a.storage.LoadOrStore(shortURL, request.URL.String())
 
 	response.Result = shortURL
-	w.Header().Set("Authorization", shortURL)
 	if exist {
 		render.Status(r, http.StatusConflict)
 		render.JSON(w, r, response)
@@ -143,6 +142,7 @@ func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 
 	for _, rec := range lu {
 		if rec.ShortURL == r.Header.Get("Authorization") {
+			log.Println(r.Header.Get("Authorization"))
 			lu = model.ListURLs{rec}
 			break
 		}
