@@ -3,6 +3,10 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"github.com/golang-migrate/migrate"
+	"github.com/golang-migrate/migrate/database/postgres"
+	_ "github.com/golang-migrate/migrate/source/file"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 	"shortener/config"
@@ -13,6 +17,7 @@ type DBT struct {
 	appCtx context.Context
 	logger logger.Logger
 	db     *sql.DB
+	m      *migrate.Migrate
 }
 
 func NewDB(ctx context.Context, l logger.Logger) *DBT {
@@ -20,11 +25,27 @@ func NewDB(ctx context.Context, l logger.Logger) *DBT {
 	if err != nil {
 		logger.WithField("error", err).Errorln("Error while open db")
 	}
-	_, _ = db.Exec("create table shortener(id serial primary key , short_url varchar(255) unique not null, original_url varchar(255))")
+
+	driver, err := postgres.WithInstance(db, &postgres.Config{})
+	if err != nil {
+		logger.WithField("error", err).Errorln("Error while get driver")
+	}
+	m, err := migrate.NewWithDatabaseInstance(
+		"file://internal/app/storage/migration",
+		"pgx://"+*config.DatabaseDsn, driver)
+	if err != nil {
+		logger.WithField("error", err).Errorln("Error while create migrate")
+	} else {
+		if err = m.Up(); err != nil {
+			logger.WithField("error", err).Errorln("Error while migrate up")
+		}
+	}
+
 	return &DBT{
 		appCtx: ctx,
 		logger: l,
 		db:     db,
+		m:      m,
 	}
 }
 
@@ -78,7 +99,7 @@ func (s *DBT) Range(f func(key, value string) bool) {
 }
 
 func (s *DBT) Close() error {
-	return s.db.Close()
+	return errors.Join(s.db.Close(), s.m.Down())
 }
 
 func (s *DBT) Ping() error {
