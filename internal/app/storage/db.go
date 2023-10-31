@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"github.com/golang-migrate/migrate"
 	"github.com/golang-migrate/migrate/database/postgres"
 	_ "github.com/golang-migrate/migrate/source/file"
@@ -99,7 +98,8 @@ func (s *DBT) Range(f func(key, value string) bool) {
 }
 
 func (s *DBT) Close() error {
-	return errors.Join(s.db.Close(), s.m.Down())
+	//return errors.Join(s.db.Close(), s.m.Down())
+	return s.db.Close()
 }
 
 func (s *DBT) Ping() error {
