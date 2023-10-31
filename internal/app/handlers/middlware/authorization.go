@@ -13,12 +13,14 @@ import (
 type issuer struct {
 }
 
-func getIssuer(ctx context.Context) string {
-	v, ok := ctx.Value(issuer{}).(string)
+func GetIssuer(ctx context.Context) string {
+	var s string
+	s, ok := ctx.Value(issuer{}).(string)
 	if !ok {
 		logger.Warn("No issuer")
+		s = ""
 	}
-	return v
+	return s
 }
 
 type authWriter struct {
