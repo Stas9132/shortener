@@ -114,6 +114,7 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 	_, exist := a.storage.LoadOrStore(shortURL, request.URL.String())
 
 	response.Result = shortURL
+	w.Header().Set("Authorization", shortURL)
 	if exist {
 		render.Status(r, http.StatusConflict)
 		render.JSON(w, r, response)
@@ -136,6 +137,13 @@ func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	if len(lu) == 0 || r.Header.Get("Accept-Encoding") != "identity" {
 		render.NoContent(w, r)
 		return
+	}
+
+	for _, rec := range lu {
+		if rec.ShortURL == r.Header.Get("Authorization") {
+			lu = model.ListURLs{rec}
+			break
+		}
 	}
 
 	render.Status(r, http.StatusOK)
