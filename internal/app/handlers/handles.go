@@ -78,6 +78,8 @@ func (a APIT) PostPlainText(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_, exist := a.storage.LoadOrStore(shortURL, string(b))
+	w.Header().Set("Authorization", shortURL)
+
 	if exist {
 		w.WriteHeader(http.StatusConflict)
 		_, _ = w.Write([]byte(shortURL))
