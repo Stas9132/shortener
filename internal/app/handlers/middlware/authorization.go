@@ -1,9 +1,13 @@
 package middlware
 
 import (
+	"context"
+	"fmt"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"net/http"
 	"shortener/internal/logger"
+	"time"
 )
 
 type authWriter struct {
@@ -19,9 +23,23 @@ func (w authWriter) WriteHeader(statusCode int) {
 
 func Authorization(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		c, err := r.Cookie("auth")
-		if err != nil {
-			j, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{}).SigningString()
+		token, err2 := jwt.Parse(c.Value, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+			}
+			return nil, nil
+		})
+		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+			ctx = context.WithValue(ctx, "issuer", claims["iss"])
+		}
+
+		if err != nil && err2 != nil {
+			j, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+				"iss": uuid.NewString(),
+				"exp": time.Now().Add(72 * time.Hour),
+			}).SigningString()
 			if err != nil {
 				logger.WithField("error", err).Errorln("error while create jwt token")
 			}
@@ -33,6 +51,6 @@ func Authorization(h http.Handler) http.Handler {
 		h.ServeHTTP(authWriter{
 			c:              c,
 			ResponseWriter: w,
-		}, r)
+		}, r.WithContext(ctx))
 	})
 }
