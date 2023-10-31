@@ -27,7 +27,7 @@ var server = sync.OnceValue(func() *http.Server {
 
 func mRouter(handler handlers.APII) {
 	r := chi.NewRouter()
-	r.Use(middlware.RequestLogger, gzip.GzipMiddleware)
+	r.Use(middlware.RequestLogger, gzip.GzipMiddleware, middlware.Authorization)
 
 	r.Post("/", handler.PostPlainText)
 	r.Get("/{sn}", handler.GetRoot)
