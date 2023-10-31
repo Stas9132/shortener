@@ -10,6 +10,17 @@ import (
 	"time"
 )
 
+type issuer struct {
+}
+
+func getIssuer(ctx context.Context) string {
+	v, ok := ctx.Value(issuer{}).(string)
+	if !ok {
+		logger.Warn("No issuer")
+	}
+	return v
+}
+
 type authWriter struct {
 	c *http.Cookie
 	http.ResponseWriter
@@ -32,7 +43,7 @@ func Authorization(h http.Handler) http.Handler {
 			return nil, nil
 		})
 		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-			ctx = context.WithValue(ctx, "issuer", claims["iss"])
+			ctx = context.WithValue(ctx, issuer{}, claims["iss"])
 		}
 
 		if err != nil && err2 != nil {
