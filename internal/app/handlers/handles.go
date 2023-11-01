@@ -80,6 +80,7 @@ func (a APIT) PostPlainText(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, e.Error(), http.StatusBadRequest)
 		return
 	}
+
 	_, exist := a.storage.LoadOrStoreExt(shortURL, string(b), middlware.GetIssuer(r.Context()))
 
 	if exist {
@@ -115,7 +116,8 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	_, exist := a.storage.LoadOrStore(shortURL, request.URL.String())
+
+	_, exist := a.storage.LoadOrStoreExt(shortURL, request.URL.String(), middlware.GetIssuer(r.Context()))
 
 	response.Result = shortURL
 	if exist {
@@ -146,13 +148,9 @@ func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	}
 	if tlu != nil {
 		lu = tlu
-		render.Status(r, http.StatusOK)
-		render.JSON(w, r, lu)
-		return
 	}
 
-	if len(lu) == 0 ||
-		(r.Header.Get("Accept-Encoding") != "identity" && len(r.Header.Get("Authorization")) == 0) {
+	if len(lu) == 0 {
 		render.NoContent(w, r)
 		return
 	}
