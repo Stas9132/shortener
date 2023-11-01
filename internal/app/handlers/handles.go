@@ -24,6 +24,7 @@ type APII interface {
 	GetRoot(w http.ResponseWriter, r *http.Request)
 	GetPing(w http.ResponseWriter, r *http.Request)
 	PostBatch(w http.ResponseWriter, r *http.Request)
+	DeleteUserUrls(w http.ResponseWriter, r *http.Request)
 }
 
 type StorageI interface {
@@ -33,6 +34,7 @@ type StorageI interface {
 	Range(f func(key, value string) bool)
 	LoadOrStore(key, value string) (actual string, loaded bool)
 	LoadOrStoreExt(key, value, user string) (actual string, loaded bool)
+	Delete(keys ...string)
 	Ping() error
 	Close() error
 }
@@ -174,7 +176,7 @@ func (a APIT) GetRoot(w http.ResponseWriter, r *http.Request) {
 
 	s, ok := a.storage.Load(shortURL)
 	if !ok {
-		render.NoContent(w, r)
+		w.WriteHeader(http.StatusGone)
 		return
 	}
 	w.Header().Set("Location", s)
@@ -221,4 +223,32 @@ func (a APIT) PostBatch(w http.ResponseWriter, r *http.Request) {
 
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, batch)
+}
+
+func (a APIT) DeleteUserUrls(w http.ResponseWriter, r *http.Request) {
+	var batch model.BatchDelete
+
+	err := json.NewDecoder(r.Body).Decode(&batch)
+	if err != nil {
+		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
+			"uri":   r.RequestURI,
+			"error": err}).
+			Warn("json.Decode")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	for i := range batch {
+		batch[i], err = url.JoinPath(*config.BaseURL, batch[i])
+		if err != nil {
+			a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
+				"uri":   r.RequestURI,
+				"error": err}).
+				Warn("url.JoinPath")
+		}
+	}
+
+	go a.storage.Delete(batch...)
+
+	w.WriteHeader(http.StatusAccepted)
 }

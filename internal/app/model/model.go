@@ -47,3 +47,5 @@ type Batch []struct {
 	OriginalURL   string `json:"original_url,omitempty"`
 	ShortURL      string `json:"short_url"`
 }
+
+type BatchDelete []string

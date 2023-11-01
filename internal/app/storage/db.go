@@ -52,12 +52,16 @@ func NewDB(ctx context.Context, l logger.Logger) *DBT {
 }
 
 func (s *DBT) Load(key string) (value string, ok bool) {
-	err := s.db.QueryRowContext(s.appCtx, "SELECT original_url FROM shortener WHERE short_url = $1", key).
-		Scan(&value)
+	var b *bool
+	err := s.db.QueryRowContext(s.appCtx, "SELECT original_url, is_deleted FROM shortener WHERE short_url = $1", key).
+		Scan(&value, &b)
 	if err != nil {
+		s.logger.WithField("error", err).Errorln("error load()")
 		return "", false
 	}
-	ok = true
+	if b == nil || !*b {
+		ok = true
+	}
 	return
 }
 
@@ -127,6 +131,15 @@ func (s *DBT) RangeExt(f func(key, value, user string) bool) {
 		}
 	}
 
+}
+
+func (s *DBT) Delete(keys ...string) {
+	for _, key := range keys {
+		_, err := s.db.ExecContext(s.appCtx, "update shortener set is_deleted = true where short_url = $1", key)
+		if err != nil {
+			s.logger.WithField("error", err).Errorln("error while db records mark as deleted")
+		}
+	}
 }
 
 func (s *DBT) Close() error {

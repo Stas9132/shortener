@@ -112,6 +112,32 @@ func (s *FileStorageT) Ping() error {
 	return nil
 }
 
+func (s *FileStorageT) Delete(keys ...string) {
+	for _, key := range keys {
+		delete(s.cache, key)
+		if _, err := s.file.Seek(0, 0); err != nil {
+			s.logger.WithField("error", err).Errorln("Error while seek file")
+		}
+		var tfd, fd []FileStorageRecordT
+		if err := json.NewDecoder(s.file).Decode(&fd); err != nil {
+			s.logger.WithField("error", err).Errorln("Error while unmarshal json")
+		}
+
+		for _, t := range fd {
+			if t.ShortURL != key {
+				tfd = append(tfd, t)
+			}
+		}
+		fd = tfd
+		if _, err := s.file.Seek(0, 0); err != nil {
+			s.logger.WithField("error", err).Errorln("Error while seek file")
+		}
+		if err := json.NewEncoder(s.file).Encode(fd); err != nil {
+			s.logger.WithField("error", err).Errorln("Error while marshal json")
+		}
+	}
+}
+
 type FileStorageRecordT struct {
 	UUID        string `json:"uuid"`
 	ShortURL    string `json:"short_url"`
