@@ -36,8 +36,8 @@ func (w authWriter) WriteHeader(statusCode int) {
 
 func Authorization(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
 		c, err := r.Cookie("auth")
+		iss := uuid.NewString()
 		if err == nil {
 			token, err2 := jwt.ParseWithClaims(c.Value, &jwt.MapClaims{}, func(token *jwt.Token) (interface{}, error) {
 				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -47,7 +47,7 @@ func Authorization(h http.Handler) http.Handler {
 			})
 			if err2 == nil {
 				if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-					ctx = context.WithValue(ctx, issuer{}, claims["iss"])
+					iss, _ = claims["iss"].(string)
 				}
 			}
 			err = err2
@@ -68,6 +68,6 @@ func Authorization(h http.Handler) http.Handler {
 		h.ServeHTTP(authWriter{
 			c:              c,
 			ResponseWriter: w,
-		}, r.WithContext(ctx))
+		}, r.WithContext(context.WithValue(r.Context(), issuer{}, iss)))
 	})
 }

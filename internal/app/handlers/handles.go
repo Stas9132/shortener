@@ -80,7 +80,7 @@ func (a APIT) PostPlainText(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, e.Error(), http.StatusBadRequest)
 		return
 	}
-	_, exist := a.storage.LoadOrStore(shortURL, string(b))
+	_, exist := a.storage.LoadOrStoreExt(shortURL, string(b), middlware.GetIssuer(r.Context()))
 
 	if exist {
 		w.WriteHeader(http.StatusConflict)
