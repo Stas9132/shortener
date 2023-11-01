@@ -138,11 +138,6 @@ func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 		return true
 	})
 
-	if len(lu) == 0 || r.Header.Get("Accept-Encoding") != "identity" {
-		render.NoContent(w, r)
-		return
-	}
-
 	var tlu model.ListURLs
 	for _, u := range lu {
 		if u.User == middlware.GetIssuer(r.Context()) {
@@ -151,6 +146,14 @@ func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	}
 	if tlu != nil {
 		lu = tlu
+		render.Status(r, http.StatusOK)
+		render.JSON(w, r, lu)
+		return
+	}
+
+	if len(lu) == 0 || r.Header.Get("Accept-Encoding") != "identity" {
+		render.NoContent(w, r)
+		return
 	}
 
 	render.Status(r, http.StatusOK)
