@@ -8,7 +8,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"shortener/config"
@@ -29,8 +28,10 @@ type APII interface {
 type StorageI interface {
 	Load(key string) (value string, ok bool)
 	Store(key, value string)
+	RangeExt(f func(key, value, user string) bool)
 	Range(f func(key, value string) bool)
 	LoadOrStore(key, value string) (actual string, loaded bool)
+	LoadOrStoreExt(key, value, user string) (actual string, loaded bool)
 	Ping() error
 	Close() error
 }
@@ -138,14 +139,6 @@ func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	if len(lu) == 0 || r.Header.Get("Accept-Encoding") != "identity" {
 		render.NoContent(w, r)
 		return
-	}
-
-	for _, rec := range lu {
-		if rec.ShortURL == r.Header.Get("Authorization") {
-			log.Println(r.Header.Get("Authorization"))
-			lu = model.ListURLs{rec}
-			break
-		}
 	}
 
 	render.Status(r, http.StatusOK)

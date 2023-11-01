@@ -13,12 +13,12 @@ import (
 type FileStorageT struct {
 	appCtx context.Context
 	logger logger.Logger
-	cache  map[string]string
+	cache  map[string]FileStorageRecordT
 	file   *os.File
 }
 
 func NewFileStorage(ctx context.Context, l logger.Logger) *FileStorageT {
-	c := make(map[string]string)
+	c := make(map[string]FileStorageRecordT)
 	var f *os.File
 
 	if len(*config.FileStoragePath) > 0 {
@@ -32,7 +32,7 @@ func NewFileStorage(ctx context.Context, l logger.Logger) *FileStorageT {
 			logger.WithField("error", err).Errorln("Error while unmarshal json")
 		}
 		for _, record := range fd {
-			c[record.ShortURL] = record.OriginalURL
+			c[record.ShortURL] = record
 		}
 	}
 	return &FileStorageT{
@@ -43,13 +43,17 @@ func NewFileStorage(ctx context.Context, l logger.Logger) *FileStorageT {
 	}
 }
 
-func (s *FileStorageT) Load(key string) (value string, ok bool) {
-	value, ok = s.cache[key]
-	return
+func (s *FileStorageT) Load(key string) (string, bool) {
+	value, ok := s.cache[key]
+	return value.OriginalURL, ok
 }
 
 func (s *FileStorageT) Store(key, value string) {
-	s.cache[key] = value
+	s.StoreExt(key, value, uuid.NewString())
+}
+
+func (s *FileStorageT) StoreExt(key, value, user string) {
+	s.cache[key] = FileStorageRecordT{OriginalURL: value, UUID: user}
 	if s.file != nil {
 		if _, err := s.file.Seek(0, 0); err != nil {
 			s.logger.WithField("error", err).Errorln("Error while seek file")
@@ -59,7 +63,7 @@ func (s *FileStorageT) Store(key, value string) {
 			s.logger.WithField("error", err).Errorln("Error while unmarshal json")
 		}
 		fd = append(fd, FileStorageRecordT{
-			UUID:        uuid.NewString(),
+			UUID:        user,
 			ShortURL:    key,
 			OriginalURL: value,
 		})
@@ -78,9 +82,23 @@ func (s *FileStorageT) LoadOrStore(key, value string) (actual string, loaded boo
 	return
 }
 
+func (s *FileStorageT) LoadOrStoreExt(key, value, user string) (actual string, loaded bool) {
+	actual, loaded = s.Load(key)
+	s.StoreExt(key, value, user)
+	return
+}
+
+func (s *FileStorageT) RangeExt(f func(key, value, user string) bool) {
+	for k, v := range s.cache {
+		if !f(k, v.OriginalURL, v.UUID) {
+			break
+		}
+	}
+}
+
 func (s *FileStorageT) Range(f func(key, value string) bool) {
 	for k, v := range s.cache {
-		if !f(k, v) {
+		if !f(k, v.OriginalURL) {
 			break
 		}
 	}

@@ -77,6 +77,12 @@ func (s *DBT) LoadOrStore(key, value string) (actual string, loaded bool) {
 	return
 }
 
+func (s *DBT) LoadOrStoreExt(key, value, user string) (actual string, loaded bool) {
+	actual, loaded = s.Load(key)
+	s.Store(key, value)
+	return
+}
+
 func (s *DBT) Range(f func(key, value string) bool) {
 	rows, err := s.db.QueryContext(s.appCtx, "SELECT short_url, original_url FROM shortener")
 	if err != nil || rows.Err() != nil {
@@ -95,8 +101,9 @@ func (s *DBT) Range(f func(key, value string) bool) {
 			break
 		}
 	}
-
 }
+
+func (s *DBT) RangeExt(f func(key, value, user string) bool) {}
 
 func (s *DBT) Close() error {
 	//return errors.Join(s.db.Close(), s.m.Down())
