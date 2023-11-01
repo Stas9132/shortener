@@ -38,17 +38,19 @@ func Authorization(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		c, err := r.Cookie("auth")
-		token, err2 := jwt.ParseWithClaims(c.Value, &jwt.MapClaims{}, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, errors.New("unexpected signing method")
+		if err == nil {
+			token, err2 := jwt.ParseWithClaims(c.Value, &jwt.MapClaims{}, func(token *jwt.Token) (interface{}, error) {
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, errors.New("unexpected signing method")
+				}
+				return []byte(key), nil
+			})
+			if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+				ctx = context.WithValue(ctx, issuer{}, claims["iss"])
 			}
-			return []byte(key), nil
-		})
-		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-			ctx = context.WithValue(ctx, issuer{}, claims["iss"])
+			err = err2
 		}
-
-		if err != nil && err2 != nil {
+		if err != nil {
 			j, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 				"iss": uuid.NewString(),
 				"exp": time.Now().Add(72 * time.Hour),
