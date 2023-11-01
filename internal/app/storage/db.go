@@ -6,6 +6,7 @@ import (
 	"github.com/golang-migrate/migrate"
 	"github.com/golang-migrate/migrate/database/postgres"
 	_ "github.com/golang-migrate/migrate/source/file"
+	"github.com/google/uuid"
 	"github.com/jackc/pgerrcode"
 	_ "github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -36,6 +37,7 @@ func NewDB(ctx context.Context, l logger.Logger) *DBT {
 	if err != nil {
 		logger.WithField("error", err).Errorln("Error while create migrate")
 	} else {
+		_ = m.Force(1)
 		if err = m.Up(); err != nil {
 			logger.WithField("error", err).Errorln("Error while migrate up")
 		}
@@ -59,8 +61,8 @@ func (s *DBT) Load(key string) (value string, ok bool) {
 	return
 }
 
-func (s *DBT) Store(key, value string) {
-	_, err := s.db.ExecContext(s.appCtx, "INSERT INTO shortener(short_url,original_url) values ($1, $2)", key, value)
+func (s *DBT) StoreExt(key, value, user string) {
+	_, err := s.db.ExecContext(s.appCtx, "INSERT INTO shortener(short_url,original_url, user_id) values ($1, $2, $3)", key, value, user)
 
 	if e, ok := err.(*pgconn.PgError); ok && e.Code == pgerrcode.UniqueViolation {
 		s.logger.WithField("URL", value).Info("URL already exist")
@@ -68,7 +70,10 @@ func (s *DBT) Store(key, value string) {
 		s.logger.WithField("error", err).
 			Warningln("Error while insert data")
 	}
+}
 
+func (s *DBT) Store(key, value string) {
+	s.StoreExt(key, value, uuid.NewString())
 }
 
 func (s *DBT) LoadOrStore(key, value string) (actual string, loaded bool) {
@@ -79,7 +84,7 @@ func (s *DBT) LoadOrStore(key, value string) (actual string, loaded bool) {
 
 func (s *DBT) LoadOrStoreExt(key, value, user string) (actual string, loaded bool) {
 	actual, loaded = s.Load(key)
-	s.Store(key, value)
+	s.StoreExt(key, value, user)
 	return
 }
 
@@ -103,7 +108,26 @@ func (s *DBT) Range(f func(key, value string) bool) {
 	}
 }
 
-func (s *DBT) RangeExt(f func(key, value, user string) bool) {}
+func (s *DBT) RangeExt(f func(key, value, user string) bool) {
+	rows, err := s.db.QueryContext(s.appCtx, "SELECT short_url, original_url, user_id FROM shortener")
+	if err != nil || rows.Err() != nil {
+		s.logger.WithField("error", err).
+			Warningln("Error while select data")
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var key, value, userId string
+		err = rows.Scan(&key, &value, &userId)
+		if err != nil {
+			s.logger.WithField("error", err).
+				Warningln("Error while select data")
+		}
+		if !f(key, value, userId) {
+			break
+		}
+	}
+
+}
 
 func (s *DBT) Close() error {
 	//return errors.Join(s.db.Close(), s.m.Down())
