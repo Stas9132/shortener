@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"shortener/config"
+	"shortener/internal/app/handlers/middlware"
 	"shortener/internal/app/model"
 	"shortener/internal/logger"
 )
@@ -128,10 +129,11 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 
 func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	var lu model.ListURLs
-	a.storage.Range(func(key, value string) bool {
+	a.storage.RangeExt(func(key, value, user string) bool {
 		lu = append(lu, model.ListURLRecordT{
 			ShortURL:    key,
 			OriginalURL: value,
+			User:        user,
 		})
 		return true
 	})
@@ -139,6 +141,16 @@ func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	if len(lu) == 0 || r.Header.Get("Accept-Encoding") != "identity" {
 		render.NoContent(w, r)
 		return
+	}
+
+	var tlu model.ListURLs
+	for _, u := range lu {
+		if u.User == middlware.GetIssuer(r.Context()) {
+			tlu = append(tlu, u)
+		}
+	}
+	if tlu != nil {
+		lu = tlu
 	}
 
 	render.Status(r, http.StatusOK)
