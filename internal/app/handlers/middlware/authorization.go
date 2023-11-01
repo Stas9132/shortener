@@ -56,7 +56,7 @@ func Authorization(h http.Handler) http.Handler {
 			j, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 				"iss": uuid.NewString(),
 				"exp": time.Now().Add(72 * time.Hour),
-			}).SignedString(key)
+			}).SignedString([]byte(key))
 			if err != nil {
 				logger.WithField("error", err).Errorln("error while create jwt token")
 			}
