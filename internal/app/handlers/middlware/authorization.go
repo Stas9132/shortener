@@ -3,7 +3,6 @@ package middlware
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"net/http"
@@ -47,7 +46,6 @@ func Authorization(h http.Handler) http.Handler {
 				return []byte(key), nil
 			})
 			if err2 == nil {
-				fmt.Println(token.Claims)
 				if claims, ok := token.Claims.(*jwt.MapClaims); ok && token.Valid {
 					iss, _ = (*claims)["iss"].(string)
 				}
@@ -56,7 +54,7 @@ func Authorization(h http.Handler) http.Handler {
 		}
 		if err != nil {
 			j, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-				"iss": uuid.NewString(),
+				"iss": iss,
 				"exp": time.Now().Add(72 * time.Hour).Unix(),
 			}).SignedString([]byte(key))
 			if err != nil {
