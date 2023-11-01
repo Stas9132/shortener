@@ -151,7 +151,8 @@ func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(lu) == 0 || r.Header.Get("Accept-Encoding") != "identity" {
+	if len(lu) == 0 ||
+		(r.Header.Get("Accept-Encoding") != "identity" && len(r.Header.Get("Authorization")) == 0) {
 		render.NoContent(w, r)
 		return
 	}
