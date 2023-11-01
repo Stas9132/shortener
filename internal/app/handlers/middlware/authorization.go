@@ -45,8 +45,10 @@ func Authorization(h http.Handler) http.Handler {
 				}
 				return []byte(key), nil
 			})
-			if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-				ctx = context.WithValue(ctx, issuer{}, claims["iss"])
+			if err2 == nil {
+				if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+					ctx = context.WithValue(ctx, issuer{}, claims["iss"])
+				}
 			}
 			err = err2
 		}
