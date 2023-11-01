@@ -2,7 +2,7 @@ package middlware
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"net/http"
@@ -14,11 +14,9 @@ type issuer struct {
 }
 
 func GetIssuer(ctx context.Context) string {
-	var s string
 	s, ok := ctx.Value(issuer{}).(string)
 	if !ok {
 		logger.Warn("No issuer")
-		s = ""
 	}
 	return s
 }
@@ -40,9 +38,9 @@ func Authorization(h http.Handler) http.Handler {
 		c, err := r.Cookie("auth")
 		token, err2 := jwt.Parse(c.Value, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+				return nil, errors.New("unexpected signing method")
 			}
-			return nil, nil
+			return []byte{}, nil
 		})
 		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 			ctx = context.WithValue(ctx, issuer{}, claims["iss"])

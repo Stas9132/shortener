@@ -21,12 +21,14 @@ import (
 
 var server = sync.OnceValue(func() *http.Server {
 	return &http.Server{
-		Addr: *config.ServerAddress,
+		Addr:    *config.ServerAddress,
+		Handler: r,
 	}
 })
+var r *chi.Mux
 
 func mRouter(handler handlers.APII) {
-	r := chi.NewRouter()
+	r = chi.NewRouter()
 	r.Use(middlware.RequestLogger, middlware.Authorization, gzip.GzipMiddleware)
 
 	r.Post("/", handler.PostPlainText)
@@ -37,7 +39,7 @@ func mRouter(handler handlers.APII) {
 	r.Get("/ping", handler.GetPing)
 	r.NotFound(handler.Default)
 	r.MethodNotAllowed(handler.Default)
-	http.Handle("/", r)
+	//http.Handle("/", r)
 }
 
 func run(h handlers.APII) {
