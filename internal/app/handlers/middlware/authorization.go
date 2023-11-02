@@ -12,11 +12,13 @@ import (
 
 const key = "secret_key"
 
-type issuer struct {
+type Issuer struct {
+	ID    string
+	State string
 }
 
-func GetIssuer(ctx context.Context) string {
-	s, ok := ctx.Value(issuer{}).(string)
+func GetIssuer(ctx context.Context) Issuer {
+	s, ok := ctx.Value(Issuer{}).(Issuer)
 	if !ok {
 		logger.Warn("No issuer")
 	}
@@ -37,7 +39,10 @@ func (w authWriter) WriteHeader(statusCode int) {
 func Authorization(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie("auth")
-		iss := uuid.NewString()
+		iss := Issuer{
+			ID:    uuid.NewString(),
+			State: "NEW",
+		}
 		if err == nil {
 			token, err2 := jwt.ParseWithClaims(c.Value, &jwt.MapClaims{}, func(token *jwt.Token) (interface{}, error) {
 				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -47,7 +52,11 @@ func Authorization(h http.Handler) http.Handler {
 			})
 			if err2 == nil {
 				if claims, ok := token.Claims.(*jwt.MapClaims); ok && token.Valid {
-					iss, _ = (*claims)["iss"].(string)
+					id, _ := (*claims)["iss"].(string)
+					iss = Issuer{
+						ID:    id,
+						State: "ESTABLISHED",
+					}
 				}
 			}
 			err = err2
@@ -68,6 +77,6 @@ func Authorization(h http.Handler) http.Handler {
 		h.ServeHTTP(authWriter{
 			c:              c,
 			ResponseWriter: w,
-		}, r.WithContext(context.WithValue(r.Context(), issuer{}, iss)))
+		}, r.WithContext(context.WithValue(r.Context(), Issuer{}, iss)))
 	})
 }

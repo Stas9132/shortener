@@ -83,7 +83,7 @@ func (a APIT) PostPlainText(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, exist := a.storage.LoadOrStoreExt(shortURL, string(b), middlware.GetIssuer(r.Context()))
+	_, exist := a.storage.LoadOrStoreExt(shortURL, string(b), middlware.GetIssuer(r.Context()).ID)
 
 	if exist {
 		w.WriteHeader(http.StatusConflict)
@@ -119,7 +119,7 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, exist := a.storage.LoadOrStoreExt(shortURL, request.URL.String(), middlware.GetIssuer(r.Context()))
+	_, exist := a.storage.LoadOrStoreExt(shortURL, request.URL.String(), middlware.GetIssuer(r.Context()).ID)
 
 	response.Result = shortURL
 	if exist {
@@ -144,11 +144,11 @@ func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 
 	var tlu model.ListURLs
 	for _, u := range lu {
-		if u.User == middlware.GetIssuer(r.Context()) {
+		if u.User == middlware.GetIssuer(r.Context()).ID {
 			tlu = append(tlu, u)
 		}
 	}
-	if tlu != nil {
+	if tlu != nil || middlware.GetIssuer(r.Context()).State == "NEW" {
 		lu = tlu
 	}
 
