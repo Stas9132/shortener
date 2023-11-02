@@ -142,13 +142,13 @@ func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 		return true
 	})
 
-	var tlu model.ListURLs
-	for _, u := range lu {
-		if u.User == middlware.GetIssuer(r.Context()).ID {
-			tlu = append(tlu, u)
+	if middlware.GetIssuer(r.Context()).State == "ESTABLISHED" {
+		var tlu model.ListURLs
+		for _, u := range lu {
+			if u.User == middlware.GetIssuer(r.Context()).ID {
+				tlu = append(tlu, u)
+			}
 		}
-	}
-	if tlu != nil || middlware.GetIssuer(r.Context()).State == "ESTABLISHED" {
 		lu = tlu
 	}
 
