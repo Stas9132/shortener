@@ -148,7 +148,7 @@ func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 			tlu = append(tlu, u)
 		}
 	}
-	if tlu != nil || middlware.GetIssuer(r.Context()).State == "NEW" {
+	if tlu != nil || middlware.GetIssuer(r.Context()).State == "ESTABLISHED" {
 		lu = tlu
 	}
 
