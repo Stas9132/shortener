@@ -22,6 +22,9 @@ func GetIssuer(ctx context.Context) *Issuer {
 	if !ok {
 		logger.Warn("No issuer")
 	}
+	if s == nil {
+		return &Issuer{}
+	}
 	return s
 }
 
