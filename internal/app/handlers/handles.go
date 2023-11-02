@@ -133,20 +133,20 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 
 func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	var lu model.ListURLs
+	a.storage.RangeExt(func(key, value, user string) bool {
+		lu = append(lu, model.ListURLRecordT{
+			ShortURL:    key,
+			OriginalURL: value,
+			User:        user,
+		})
+		return true
+	})
 
 	switch middlware.GetIssuer(r.Context()).State {
 	case "NEW":
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	case "ESTABLISHED":
-		a.storage.RangeExt(func(key, value, user string) bool {
-			lu = append(lu, model.ListURLRecordT{
-				ShortURL:    key,
-				OriginalURL: value,
-				User:        user,
-			})
-			return true
-		})
 		var tlu model.ListURLs
 		for _, u := range lu {
 			if u.User == middlware.GetIssuer(r.Context()).ID {
