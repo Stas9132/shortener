@@ -17,8 +17,8 @@ type Issuer struct {
 	State string
 }
 
-func GetIssuer(ctx context.Context) Issuer {
-	s, ok := ctx.Value(Issuer{}).(Issuer)
+func GetIssuer(ctx context.Context) *Issuer {
+	s, ok := ctx.Value(Issuer{}).(*Issuer)
 	if !ok {
 		logger.Warn("No issuer")
 	}
@@ -62,8 +62,9 @@ func Authorization(h http.Handler) http.Handler {
 			err = err2
 		}
 		if err != nil {
+			logger.WithField("error", err).Info("Token error")
 			j, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-				"iss": iss,
+				"iss": iss.ID,
 				"exp": time.Now().Add(72 * time.Hour).Unix(),
 			}).SignedString([]byte(key))
 			if err != nil {
@@ -77,6 +78,6 @@ func Authorization(h http.Handler) http.Handler {
 		h.ServeHTTP(authWriter{
 			c:              c,
 			ResponseWriter: w,
-		}, r.WithContext(context.WithValue(r.Context(), Issuer{}, iss)))
+		}, r.WithContext(context.WithValue(r.Context(), Issuer{}, &iss)))
 	})
 }
