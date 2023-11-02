@@ -152,7 +152,7 @@ func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 		lu = tlu
 	}
 
-	if len(lu) == 0 {
+	if len(lu) == 0 || middlware.GetIssuer(r.Context()).State == "NEW" {
 		render.NoContent(w, r)
 		return
 	}
