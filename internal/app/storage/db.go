@@ -120,13 +120,13 @@ func (s *DBT) RangeExt(f func(key, value, user string) bool) {
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var key, value, userId string
-		err = rows.Scan(&key, &value, &userId)
+		var key, value, userID string
+		err = rows.Scan(&key, &value, &userID)
 		if err != nil {
 			s.logger.WithField("error", err).
 				Warningln("Error while select data")
 		}
-		if !f(key, value, userId) {
+		if !f(key, value, userID) {
 			break
 		}
 	}
