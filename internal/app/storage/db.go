@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"github.com/golang-migrate/migrate"
 	"github.com/golang-migrate/migrate/database/postgres"
 	_ "github.com/golang-migrate/migrate/source/file"
@@ -44,8 +45,9 @@ func NewDB(ctx context.Context, l logger.Logger) (*DBT, error) {
 			logger.WithField("error", err).Errorln("Error while migrate force")
 			return nil, err
 		}
-		if err = m.Up(); err != nil {
+		if err = m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 			logger.WithField("error", err).Errorln("Error while migrate up")
+			return nil, err
 		}
 	}
 
