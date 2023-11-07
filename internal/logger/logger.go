@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/sirupsen/logrus"
-	"log"
 	"shortener/config"
 )
 
@@ -70,11 +69,11 @@ var Tracef,
 		fmt.Printf("\n")
 	}
 
-func NewLogger(ctx context.Context) Logger {
+func NewLogger(ctx context.Context) (Logger, error) {
 	lvl, err := logrus.ParseLevel(*config.LogLevel)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	logger.SetLevel(lvl)
-	return logger
+	return logger, nil
 }

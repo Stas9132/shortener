@@ -21,23 +21,29 @@ type DBT struct {
 	m      *migrate.Migrate
 }
 
-func NewDB(ctx context.Context, l logger.Logger) *DBT {
+func NewDB(ctx context.Context, l logger.Logger) (*DBT, error) {
 	db, err := sql.Open("pgx", *config.DatabaseDsn)
 	if err != nil {
 		logger.WithField("error", err).Errorln("Error while open db")
+		return nil, err
 	}
 
 	driver, err := postgres.WithInstance(db, &postgres.Config{})
 	if err != nil {
 		logger.WithField("error", err).Errorln("Error while get driver")
+		return nil, err
 	}
 	m, err := migrate.NewWithDatabaseInstance(
 		"file://internal/app/storage/migration",
 		"pgx://"+*config.DatabaseDsn, driver)
 	if err != nil {
 		logger.WithField("error", err).Errorln("Error while create migrate")
+		return nil, err
 	} else {
-		_ = m.Force(1)
+		if err = m.Force(1); err != nil {
+			logger.WithField("error", err).Errorln("Error while migrate force")
+			return nil, err
+		}
 		if err = m.Up(); err != nil {
 			logger.WithField("error", err).Errorln("Error while migrate up")
 		}
@@ -48,7 +54,7 @@ func NewDB(ctx context.Context, l logger.Logger) *DBT {
 		logger: l,
 		db:     db,
 		m:      m,
-	}
+	}, nil
 }
 
 func (s *DBT) Load(key string) (value string, ok bool) {

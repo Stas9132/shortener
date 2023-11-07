@@ -64,10 +64,11 @@ func (a APIT) Default(w http.ResponseWriter, r *http.Request) {
 func (a APIT) PostPlainText(w http.ResponseWriter, r *http.Request) {
 	b, e := io.ReadAll(r.Body)
 	if e != nil {
-		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
-			"uri":   r.RequestURI,
-			"error": e}).
-			Warn("io.ReadAll error")
+		a.logger.WithFields(map[string]interface{}{
+			"remoteAddr": r.RemoteAddr,
+			"uri":        r.RequestURI,
+			"error":      e,
+		}).Warn("io.ReadAll error")
 		http.Error(w, e.Error(), http.StatusBadRequest)
 		return
 	}
@@ -75,10 +76,11 @@ func (a APIT) PostPlainText(w http.ResponseWriter, r *http.Request) {
 		*config.BaseURL,
 		getHash(b))
 	if e != nil {
-		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
-			"uri":   r.RequestURI,
-			"error": e}).
-			Warn("url.JoinPath error")
+		a.logger.WithFields(map[string]interface{}{
+			"remoteAddr": r.RemoteAddr,
+			"uri":        r.RequestURI,
+			"error":      e,
+		}).Warn("url.JoinPath error")
 		http.Error(w, e.Error(), http.StatusBadRequest)
 		return
 	}
@@ -100,10 +102,11 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
-		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
-			"uri":   r.RequestURI,
-			"error": err}).
-			Warn("json.Decode")
+		a.logger.WithFields(map[string]interface{}{
+			"remoteAddr": r.RemoteAddr,
+			"uri":        r.RequestURI,
+			"error":      err,
+		}).Warn("json.Decode")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -111,10 +114,11 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 		*config.BaseURL,
 		getHash([]byte(request.URL.String())))
 	if err != nil {
-		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
-			"uri":   r.RequestURI,
-			"error": err}).
-			Warn("url.JoinPath")
+		a.logger.WithFields(map[string]interface{}{
+			"remoteAddr": r.RemoteAddr,
+			"uri":        r.RequestURI,
+			"error":      err,
+		}).Warn("url.JoinPath")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -170,10 +174,11 @@ func (a APIT) GetRoot(w http.ResponseWriter, r *http.Request) {
 		*config.BaseURL,
 		chi.URLParam(r, "sn"))
 	if e != nil {
-		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
-			"uri":   r.RequestURI,
-			"error": e}).
-			Warn("url.JoinPath")
+		a.logger.WithFields(map[string]interface{}{
+			"remoteAddr": r.RemoteAddr,
+			"uri":        r.RequestURI,
+			"error":      e,
+		}).Warn("url.JoinPath")
 		http.Error(w, e.Error(), http.StatusBadRequest)
 		return
 	}
@@ -202,10 +207,11 @@ func (a APIT) PostBatch(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&batch)
 	if err != nil {
-		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
-			"uri":   r.RequestURI,
-			"error": err}).
-			Warn("json.Decode")
+		a.logger.WithFields(map[string]interface{}{
+			"remoteAddr": r.RemoteAddr,
+			"uri":        r.RequestURI,
+			"error":      err,
+		}).Warn("json.Decode")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -214,10 +220,11 @@ func (a APIT) PostBatch(w http.ResponseWriter, r *http.Request) {
 			*config.BaseURL,
 			getHash([]byte(batch[i].OriginalURL)))
 		if err != nil {
-			a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
-				"uri":   r.RequestURI,
-				"error": err}).
-				Warn("url.JoinPath")
+			a.logger.WithFields(map[string]interface{}{
+				"remoteAddr": r.RemoteAddr,
+				"uri":        r.RequestURI,
+				"error":      err,
+			}).Warn("url.JoinPath")
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -234,10 +241,11 @@ func (a APIT) DeleteUserUrls(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&batch)
 	if err != nil {
-		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
-			"uri":   r.RequestURI,
-			"error": err}).
-			Warn("json.Decode")
+		a.logger.WithFields(map[string]interface{}{
+			"remoteAddr": r.RemoteAddr,
+			"uri":        r.RequestURI,
+			"error":      err,
+		}).Warn("json.Decode")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -245,10 +253,11 @@ func (a APIT) DeleteUserUrls(w http.ResponseWriter, r *http.Request) {
 	for i := range batch {
 		batch[i], err = url.JoinPath(*config.BaseURL, batch[i])
 		if err != nil {
-			a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
-				"uri":   r.RequestURI,
-				"error": err}).
-				Warn("url.JoinPath")
+			a.logger.WithFields(map[string]interface{}{
+				"remoteAddr": r.RemoteAddr,
+				"uri":        r.RequestURI,
+				"error":      err,
+			}).Warn("url.JoinPath")
 		}
 	}
 

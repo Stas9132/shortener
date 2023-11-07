@@ -14,6 +14,7 @@ import (
 	"net/http/httptest"
 	"regexp"
 	"shortener/config"
+	"shortener/internal/app/handlers/middlware"
 	"shortener/internal/app/model"
 	strg "shortener/internal/app/storage"
 	"shortener/internal/logger"
@@ -28,7 +29,7 @@ var _ = func() bool {
 	return true
 }()
 
-var storage = strg.NewFileStorage(context.Background(), logger.NewDummy())
+var storage, _ = strg.NewFileStorage(context.Background(), logger.NewDummy())
 var api = NewAPI(context.Background(), logger.NewDummy(), storage)
 
 func Test_getHash(t *testing.T) {
@@ -149,7 +150,7 @@ got status BadRequest`,
 }
 
 func TestPostPlainText(t *testing.T) {
-	s := strg.NewFileStorage(context.Background(), logger.NewDummy())
+	s, _ := strg.NewFileStorage(context.Background(), logger.NewDummy())
 	a := NewAPI(context.Background(), logger.NewDummy(), s)
 	type args struct {
 		body io.Reader
@@ -194,7 +195,7 @@ got status BadRequest`,
 			}
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPost, "http://localhost/", tt.args.body)
-			a.PostPlainText(w, r)
+			middlware.Authorization(http.HandlerFunc(a.PostPlainText)).ServeHTTP(w, r)
 			resp := w.Result()
 			defer resp.Body.Close()
 			assert.Equal(t, tt.wantStatus, resp.StatusCode)
@@ -278,7 +279,7 @@ got status BadRequest`,
 }
 
 func TestGetUserURLs(t *testing.T) {
-	s := strg.NewFileStorage(context.Background(), logger.NewDummy())
+	s, _ := strg.NewFileStorage(context.Background(), logger.NewDummy())
 	a := NewAPI(context.Background(), logger.NewDummy(), s)
 	srv := httptest.NewServer(http.HandlerFunc(a.GetUserURLs))
 	defer srv.Close()

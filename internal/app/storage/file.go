@@ -17,15 +17,16 @@ type FileStorageT struct {
 	file   *os.File
 }
 
-func NewFileStorage(ctx context.Context, l logger.Logger) *FileStorageT {
+func NewFileStorage(ctx context.Context, l logger.Logger) (*FileStorageT, error) {
 	c := make(map[string]FileStorageRecordT)
 	var f *os.File
 
-	if len(*config.FileStoragePath) > 0 {
+	if config.FileStoragePath != nil {
 		var err error
 		f, err = os.OpenFile(*config.FileStoragePath, os.O_CREATE|os.O_RDWR, 0644)
-		if err != nil {
+		if err != nil && len(*config.FileStoragePath) > 0 {
 			logger.WithField("error", err).Errorln("Error while open file")
+			return nil, err
 		}
 		var fd []FileStorageRecordT
 		if err = json.NewDecoder(f).Decode(&fd); err != nil {
@@ -40,7 +41,7 @@ func NewFileStorage(ctx context.Context, l logger.Logger) *FileStorageT {
 		logger: l,
 		cache:  c,
 		file:   f,
-	}
+	}, nil
 }
 
 func (s *FileStorageT) Load(key string) (string, bool) {
