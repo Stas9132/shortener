@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"log"
 	"os"
 	"shortener/config"
 	"shortener/internal/logger"
@@ -31,8 +30,6 @@ func NewFileStorage(ctx context.Context, l logger.Logger) (*FileStorageT, error)
 		}
 		var fd []FileStorageRecordT
 		if err = json.NewDecoder(f).Decode(&fd); err != nil && err.Error() != "EOF" && f != nil {
-			log.Println(err.Error(), f)
-			os.Exit(8)
 			logger.WithField("error", err).Errorln("Error while unmarshal json")
 			return nil, err
 		}
