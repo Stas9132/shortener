@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"shortener/config"
+	"shortener/internal/app/handlers/middlware"
 	"shortener/internal/app/model"
 	"shortener/internal/logger"
 )
@@ -23,13 +24,17 @@ type APII interface {
 	GetRoot(w http.ResponseWriter, r *http.Request)
 	GetPing(w http.ResponseWriter, r *http.Request)
 	PostBatch(w http.ResponseWriter, r *http.Request)
+	DeleteUserUrls(w http.ResponseWriter, r *http.Request)
 }
 
 type StorageI interface {
 	Load(key string) (value string, ok bool)
 	Store(key, value string)
+	RangeExt(f func(key, value, user string) bool)
 	Range(f func(key, value string) bool)
 	LoadOrStore(key, value string) (actual string, loaded bool)
+	LoadOrStoreExt(key, value, user string) (actual string, loaded bool)
+	Delete(keys ...string)
 	Ping() error
 	Close() error
 }
@@ -59,10 +64,11 @@ func (a APIT) Default(w http.ResponseWriter, r *http.Request) {
 func (a APIT) PostPlainText(w http.ResponseWriter, r *http.Request) {
 	b, e := io.ReadAll(r.Body)
 	if e != nil {
-		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
-			"uri":   r.RequestURI,
-			"error": e}).
-			Warn("io.ReadAll error")
+		a.logger.WithFields(map[string]interface{}{
+			"remoteAddr": r.RemoteAddr,
+			"uri":        r.RequestURI,
+			"error":      e,
+		}).Warn("io.ReadAll error")
 		http.Error(w, e.Error(), http.StatusBadRequest)
 		return
 	}
@@ -70,14 +76,17 @@ func (a APIT) PostPlainText(w http.ResponseWriter, r *http.Request) {
 		*config.BaseURL,
 		getHash(b))
 	if e != nil {
-		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
-			"uri":   r.RequestURI,
-			"error": e}).
-			Warn("url.JoinPath error")
+		a.logger.WithFields(map[string]interface{}{
+			"remoteAddr": r.RemoteAddr,
+			"uri":        r.RequestURI,
+			"error":      e,
+		}).Warn("url.JoinPath error")
 		http.Error(w, e.Error(), http.StatusBadRequest)
 		return
 	}
-	_, exist := a.storage.LoadOrStore(shortURL, string(b))
+
+	_, exist := a.storage.LoadOrStoreExt(shortURL, string(b), middlware.GetIssuer(r.Context()).ID)
+
 	if exist {
 		w.WriteHeader(http.StatusConflict)
 		_, _ = w.Write([]byte(shortURL))
@@ -93,10 +102,11 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
-		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
-			"uri":   r.RequestURI,
-			"error": err}).
-			Warn("json.Decode")
+		a.logger.WithFields(map[string]interface{}{
+			"remoteAddr": r.RemoteAddr,
+			"uri":        r.RequestURI,
+			"error":      err,
+		}).Warn("json.Decode")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -104,14 +114,16 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 		*config.BaseURL,
 		getHash([]byte(request.URL.String())))
 	if err != nil {
-		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
-			"uri":   r.RequestURI,
-			"error": err}).
-			Warn("url.JoinPath")
+		a.logger.WithFields(map[string]interface{}{
+			"remoteAddr": r.RemoteAddr,
+			"uri":        r.RequestURI,
+			"error":      err,
+		}).Warn("url.JoinPath")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	_, exist := a.storage.LoadOrStore(shortURL, request.URL.String())
+
+	_, exist := a.storage.LoadOrStoreExt(shortURL, request.URL.String(), middlware.GetIssuer(r.Context()).ID)
 
 	response.Result = shortURL
 	if exist {
@@ -125,15 +137,30 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 
 func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	var lu model.ListURLs
-	a.storage.Range(func(key, value string) bool {
+	a.storage.RangeExt(func(key, value, user string) bool {
 		lu = append(lu, model.ListURLRecordT{
 			ShortURL:    key,
 			OriginalURL: value,
+			User:        user,
 		})
 		return true
 	})
 
-	if len(lu) == 0 || r.Header.Get("Accept-Encoding") != "identity" {
+	switch middlware.GetIssuer(r.Context()).State {
+	case "NEW":
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	case "ESTABLISHED":
+		var tlu model.ListURLs
+		for _, u := range lu {
+			if u.User == middlware.GetIssuer(r.Context()).ID {
+				tlu = append(tlu, u)
+			}
+		}
+		lu = tlu
+	}
+
+	if len(lu) == 0 {
 		render.NoContent(w, r)
 		return
 	}
@@ -147,17 +174,18 @@ func (a APIT) GetRoot(w http.ResponseWriter, r *http.Request) {
 		*config.BaseURL,
 		chi.URLParam(r, "sn"))
 	if e != nil {
-		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
-			"uri":   r.RequestURI,
-			"error": e}).
-			Warn("url.JoinPath")
+		a.logger.WithFields(map[string]interface{}{
+			"remoteAddr": r.RemoteAddr,
+			"uri":        r.RequestURI,
+			"error":      e,
+		}).Warn("url.JoinPath")
 		http.Error(w, e.Error(), http.StatusBadRequest)
 		return
 	}
 
 	s, ok := a.storage.Load(shortURL)
 	if !ok {
-		render.NoContent(w, r)
+		w.WriteHeader(http.StatusGone)
 		return
 	}
 	w.Header().Set("Location", s)
@@ -179,10 +207,11 @@ func (a APIT) PostBatch(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&batch)
 	if err != nil {
-		a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
-			"uri":   r.RequestURI,
-			"error": err}).
-			Warn("json.Decode")
+		a.logger.WithFields(map[string]interface{}{
+			"remoteAddr": r.RemoteAddr,
+			"uri":        r.RequestURI,
+			"error":      err,
+		}).Warn("json.Decode")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -191,10 +220,11 @@ func (a APIT) PostBatch(w http.ResponseWriter, r *http.Request) {
 			*config.BaseURL,
 			getHash([]byte(batch[i].OriginalURL)))
 		if err != nil {
-			a.logger.WithFields(map[string]interface{}{"remoteAddr": r.RemoteAddr,
-				"uri":   r.RequestURI,
-				"error": err}).
-				Warn("url.JoinPath")
+			a.logger.WithFields(map[string]interface{}{
+				"remoteAddr": r.RemoteAddr,
+				"uri":        r.RequestURI,
+				"error":      err,
+			}).Warn("url.JoinPath")
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -204,4 +234,34 @@ func (a APIT) PostBatch(w http.ResponseWriter, r *http.Request) {
 
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, batch)
+}
+
+func (a APIT) DeleteUserUrls(w http.ResponseWriter, r *http.Request) {
+	var batch model.BatchDelete
+
+	err := json.NewDecoder(r.Body).Decode(&batch)
+	if err != nil {
+		a.logger.WithFields(map[string]interface{}{
+			"remoteAddr": r.RemoteAddr,
+			"uri":        r.RequestURI,
+			"error":      err,
+		}).Warn("json.Decode")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	for i := range batch {
+		batch[i], err = url.JoinPath(*config.BaseURL, batch[i])
+		if err != nil {
+			a.logger.WithFields(map[string]interface{}{
+				"remoteAddr": r.RemoteAddr,
+				"uri":        r.RequestURI,
+				"error":      err,
+			}).Warn("url.JoinPath")
+		}
+	}
+
+	go a.storage.Delete(batch...)
+
+	w.WriteHeader(http.StatusAccepted)
 }

@@ -15,39 +15,33 @@ import (
 	"shortener/internal/app/storage"
 	"shortener/internal/gzip"
 	"shortener/internal/logger"
-	"sync"
 	"time"
 )
 
-var server = sync.OnceValue(func() *http.Server {
-	return &http.Server{
-		Addr: *config.ServerAddress,
-	}
-})
-
 func mRouter(handler handlers.APII) {
 	r := chi.NewRouter()
-	r.Use(middlware.RequestLogger, gzip.GzipMiddleware)
+	r.Use(middlware.RequestLogger, middlware.Authorization, gzip.GzipMiddleware)
 
 	r.Post("/", handler.PostPlainText)
 	r.Get("/{sn}", handler.GetRoot)
 	r.Post("/api/shorten", handler.PostJSON)
 	r.Post("/api/shorten/batch", handler.PostBatch)
 	r.Get("/api/user/urls", handler.GetUserURLs)
+	r.Delete("/api/user/urls", handler.DeleteUserUrls)
 	r.Get("/ping", handler.GetPing)
 	r.NotFound(handler.Default)
 	r.MethodNotAllowed(handler.Default)
 	http.Handle("/", r)
 }
 
-func run(h handlers.APII) {
+func run(s *http.Server, h handlers.APII) {
 	logger.WithFields(map[string]interface{}{
 		"address": *config.ServerAddress,
 	}).Infoln("Starting server")
 
 	mRouter(h)
 
-	if err := server().ListenAndServe(); err != nil {
+	if err := s.ListenAndServe(); err != nil {
 		t := &net.OpError{}
 		if errors.As(err, &t) {
 			log.Fatal(err)
@@ -62,21 +56,31 @@ func main() {
 	defer stop()
 
 	config.Init(ctx)
-	l := logger.NewLogger(ctx)
+	l, err := logger.NewLogger(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
 	var st handlers.StorageI
 	if len(*config.DatabaseDsn) == 0 {
-		st = storage.NewFileStorage(ctx, l)
+		st, err = storage.NewFileStorage(ctx, l)
+		if err != nil {
+			log.Fatal(err)
+		}
 	} else {
-		st = storage.NewDB(ctx, l)
+		st, err = storage.NewDB(ctx, l)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 	h := handlers.NewAPI(ctx, l, st)
-	go run(h)
+	s := &http.Server{Addr: *config.ServerAddress}
+	go run(s, h)
 
 	<-ctx.Done()
 
-	ctx2, can2 := context.WithTimeout(context.Background(), 5*time.Second)
-	defer can2()
-	server().Shutdown(ctx2)
+	ctx, cansel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cansel()
+	s.Shutdown(ctx)
 	st.Close()
 	time.Sleep(time.Second)
 }

@@ -39,6 +39,7 @@ type ListURLs []ListURLRecordT
 type ListURLRecordT struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
+	User        string `json:"-"`
 }
 
 type Batch []struct {
@@ -46,3 +47,5 @@ type Batch []struct {
 	OriginalURL   string `json:"original_url,omitempty"`
 	ShortURL      string `json:"short_url"`
 }
+
+type BatchDelete []string
