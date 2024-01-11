@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
@@ -46,11 +45,19 @@ func NewAPI(ctx context.Context, l logger.Logger, storage StorageI) APIT {
 	return APIT{storage: storage, logger: l}
 }
 
+//func getHashOld(b []byte) string {
+//	h := md5.Sum(b)
+//	d := make([]byte, len(h)/4)
+//	for i := range d {
+//		d[i] = h[i] + h[i+len(h)/4] + h[i+len(h)/2] + h[i+3*len(h)/4]
+//	}
+//	return hex.EncodeToString(d)
+//}
+
 func getHash(b []byte) string {
-	h := md5.Sum(b)
-	d := make([]byte, len(h)/4)
-	for i := range d {
-		d[i] = h[i] + h[i+len(h)/4] + h[i+len(h)/2] + h[i+3*len(h)/4]
+	d := make([]byte, 4)
+	for i := 0; i < len(b); i++ {
+		d[i%4] += b[i]
 	}
 	return hex.EncodeToString(d)
 }
