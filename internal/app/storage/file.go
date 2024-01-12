@@ -3,9 +3,9 @@ package storage
 import (
 	"context"
 	"encoding/json"
+	"github.com/Stas9132/shortener/config"
+	"github.com/Stas9132/shortener/internal/logger"
 	"os"
-	"shortener/config"
-	"shortener/internal/logger"
 
 	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/v5/stdlib"

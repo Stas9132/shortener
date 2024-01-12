@@ -3,17 +3,17 @@ package main
 import (
 	"context"
 	"errors"
+	"github.com/Stas9132/shortener/config"
+	"github.com/Stas9132/shortener/internal/app/handlers"
+	"github.com/Stas9132/shortener/internal/app/handlers/middlware"
+	"github.com/Stas9132/shortener/internal/app/storage"
+	"github.com/Stas9132/shortener/internal/gzip"
+	"github.com/Stas9132/shortener/internal/logger"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
-	"shortener/config"
-	"shortener/internal/app/handlers"
-	"shortener/internal/app/handlers/middlware"
-	"shortener/internal/app/storage"
-	"shortener/internal/gzip"
-	"shortener/internal/logger"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -57,7 +57,7 @@ func main() {
 	defer stop()
 
 	config.Init(ctx)
-	l, err := logger.NewLogger(ctx)
+	l, err := logger.NewLogrusLogger(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}

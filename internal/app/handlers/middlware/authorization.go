@@ -3,8 +3,8 @@ package middlware
 import (
 	"context"
 	"errors"
+	"github.com/Stas9132/shortener/internal/logger"
 	"net/http"
-	"shortener/internal/logger"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"

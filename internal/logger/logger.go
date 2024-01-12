@@ -3,13 +3,19 @@ package logger
 import (
 	"context"
 	"fmt"
-	"shortener/config"
+	"github.com/Stas9132/shortener/config"
 
 	"github.com/sirupsen/logrus"
 )
 
 var logger = logrus.New()
 
+// LogrusLogger - Mediator
+type LogrusLogger struct {
+	*logrus.Logger
+}
+
+// Logger - interface to logger package
 type Logger interface {
 	Trace(...interface{})
 	Tracef(string, ...interface{})
@@ -24,7 +30,11 @@ type Logger interface {
 	WithField(key string, value interface{}) *logrus.Entry
 	WithFields(fields logrus.Fields) *logrus.Entry
 }
+
+// Log will log a message at the level given as parameter.
 type Log func(l ...interface{})
+
+// Logf will log a format message at the level given as parameter.
 type Logf func(s string, l ...interface{})
 
 var WithField,
@@ -70,11 +80,72 @@ var Tracef,
 		fmt.Printf("\n")
 	}
 
-func NewLogger(ctx context.Context) (Logger, error) {
+// NewLogrusLogger - Creates a new logger.
+func NewLogrusLogger(ctx context.Context) (*LogrusLogger, error) {
 	lvl, err := logrus.ParseLevel(*config.LogLevel)
 	if err != nil {
 		return nil, err
 	}
 	logger.SetLevel(lvl)
-	return logger, nil
+	return &LogrusLogger{logger}, nil
+}
+
+// Trace will log a message at the trace level.
+func (l *LogrusLogger) Trace(args ...interface{}) {
+	l.Logger.Trace(args...)
+}
+
+// Tracef will log a format message at the trace level.
+func (l *LogrusLogger) Tracef(fmt string, args ...interface{}) {
+	l.Logger.Tracef(fmt, args...)
+}
+
+// Debug will log a message at the debug level.
+func (l *LogrusLogger) Debug(args ...interface{}) {
+	l.Logger.Debug(args...)
+}
+
+// Debugf will log a format message at the debug level.
+func (l *LogrusLogger) Debugf(fmt string, args ...interface{}) {
+	l.Logger.Debugf(fmt, args...)
+}
+
+// Info will log a message at the info level.
+func (l *LogrusLogger) Info(args ...interface{}) {
+	l.Logger.Info(args...)
+}
+
+// Infof will log a format message at the info level.
+func (l *LogrusLogger) Infof(fmt string, args ...interface{}) {
+	l.Logger.Infof(fmt, args...)
+}
+
+// Warn will log a message at the warn level.
+func (l *LogrusLogger) Warn(args ...interface{}) {
+	l.Logger.Warn(args...)
+}
+
+// Warnf will log a format message at the warn level.
+func (l *LogrusLogger) Warnf(fmt string, args ...interface{}) {
+	l.Logger.Warnf(fmt, args...)
+}
+
+// Error will log a message at the error level.
+func (l *LogrusLogger) Error(args ...interface{}) {
+	l.Logger.Error(args...)
+}
+
+// Errorf will log a format message at the error level.
+func (l *LogrusLogger) Errorf(fmt string, args ...interface{}) {
+	l.Logger.Errorf(fmt, args...)
+}
+
+// WithField will add field to the log message
+func (l *LogrusLogger) WithField(key string, value interface{}) *logrus.Entry {
+	return l.Logger.WithField(key, value)
+}
+
+// WithFields will add fields to the log message
+func (l *LogrusLogger) WithFields(fields logrus.Fields) *logrus.Entry {
+	return l.Logger.WithFields(fields)
 }

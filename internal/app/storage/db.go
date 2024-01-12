@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"shortener/config"
-	"shortener/internal/logger"
+	"github.com/Stas9132/shortener/config"
+	"github.com/Stas9132/shortener/internal/logger"
 
 	"github.com/golang-migrate/migrate"
 	"github.com/golang-migrate/migrate/database/postgres"
