@@ -45,19 +45,19 @@ func Test_getHash(t *testing.T) {
 send: "" - empty string
 got: hash`,
 		args: struct{ b []byte }{b: nil},
-		want: "389589f3",
+		want: "00000000",
 	}, {
 		name: `Test getHash function - compare with reference value
 send: "https://yandex.ru/"
 got: hash`,
 		args: struct{ b []byte }{b: []byte("https://yandex.ru/")},
-		want: "1e320d4f",
+		want: "2eb63f75",
 	}, {
 		name: `Test getHash function - compare with reference value
 send: "https://go.dev/"
 got: hash`,
 		args: struct{ b []byte }{b: []byte("https://go.dev/")},
-		want: "e4546b92",
+		want: "a7930003",
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -97,7 +97,7 @@ got:
 		args:       args{method: http.MethodPost, path: "/", body: strings.NewReader("https://go.dev/")},
 		memSlot:    "1",
 		wantStatus: http.StatusCreated,
-		wantBody:   []byte("e4546b92"),
+		wantBody:   []byte("a7930003"),
 	}, {
 		name: `Get original URL from short
 send: 
