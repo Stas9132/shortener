@@ -4,15 +4,16 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/render"
+	"github.com/Stas9132/shortener/config"
+	"github.com/Stas9132/shortener/internal/app/handlers/middlware"
+	"github.com/Stas9132/shortener/internal/app/model"
+	"github.com/Stas9132/shortener/internal/logger"
 	"io"
 	"net/http"
 	"net/url"
-	"shortener/config"
-	"shortener/internal/app/handlers/middlware"
-	"shortener/internal/app/model"
-	"shortener/internal/logger"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/render"
 )
 
 type APII interface {
