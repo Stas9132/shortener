@@ -3,11 +3,12 @@ package middlware
 import (
 	"context"
 	"errors"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 	"net/http"
 	"shortener/internal/logger"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 const key = "secret_key"

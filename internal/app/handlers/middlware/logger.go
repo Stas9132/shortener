@@ -1,10 +1,11 @@
 package middlware
 
 import (
-	"github.com/sirupsen/logrus"
 	"net/http"
 	"shortener/internal/logger"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 type responseData struct {

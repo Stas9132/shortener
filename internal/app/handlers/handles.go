@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/render"
 	"io"
 	"net/http"
 	"net/url"
@@ -13,6 +11,9 @@ import (
 	"shortener/internal/app/handlers/middlware"
 	"shortener/internal/app/model"
 	"shortener/internal/logger"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/render"
 )
 
 type APII interface {

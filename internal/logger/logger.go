@@ -3,8 +3,9 @@ package logger
 import (
 	"context"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"shortener/config"
+
+	"github.com/sirupsen/logrus"
 )
 
 var logger = logrus.New()
