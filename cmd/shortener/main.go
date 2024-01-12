@@ -57,6 +57,7 @@ func main() {
 	defer stop()
 
 	config.Init(ctx)
+
 	l, err := logger.NewLogrusLogger(ctx)
 	if err != nil {
 		log.Fatal(err)
