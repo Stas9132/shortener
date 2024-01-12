@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/go-chi/chi/v5"
 	"log"
 	"net"
 	"net/http"
@@ -16,6 +15,8 @@ import (
 	"shortener/internal/gzip"
 	"shortener/internal/logger"
 	"time"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func mRouter(handler handlers.APII) {
