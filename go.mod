@@ -5,6 +5,7 @@ go 1.21.0
 require (
 	github.com/go-chi/chi/v5 v5.0.10
 	github.com/go-chi/render v1.0.3
+	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/google/uuid v1.3.1
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
