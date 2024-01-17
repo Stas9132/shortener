@@ -11,6 +11,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
+// FileStorageT - struct
 type FileStorageT struct {
 	appCtx context.Context
 	logger logger.Logger
@@ -18,6 +19,7 @@ type FileStorageT struct {
 	file   *os.File
 }
 
+// NewFileStorage - constructor
 func NewFileStorage(ctx context.Context, l logger.Logger) (*FileStorageT, error) {
 	c := make(map[string]FileStorageRecordT)
 	var f *os.File
@@ -46,15 +48,18 @@ func NewFileStorage(ctx context.Context, l logger.Logger) (*FileStorageT, error)
 	}, nil
 }
 
+// Load - method
 func (s *FileStorageT) Load(key string) (string, bool) {
 	value, ok := s.cache[key]
 	return value.OriginalURL, ok
 }
 
+// Store - method
 func (s *FileStorageT) Store(key, value string) {
 	s.StoreExt(key, value, uuid.NewString())
 }
 
+// StoreExt - method
 func (s *FileStorageT) StoreExt(key, value, user string) {
 	s.cache[key] = FileStorageRecordT{OriginalURL: value, UUID: user}
 	if s.file != nil {
@@ -79,18 +84,21 @@ func (s *FileStorageT) StoreExt(key, value, user string) {
 	}
 }
 
+// LoadOrStore - method
 func (s *FileStorageT) LoadOrStore(key, value string) (actual string, loaded bool) {
 	actual, loaded = s.Load(key)
 	s.Store(key, value)
 	return
 }
 
+// LoadOrStoreExt - method
 func (s *FileStorageT) LoadOrStoreExt(key, value, user string) (actual string, loaded bool) {
 	actual, loaded = s.Load(key)
 	s.StoreExt(key, value, user)
 	return
 }
 
+// RangeExt - method
 func (s *FileStorageT) RangeExt(f func(key, value, user string) bool) {
 	for k, v := range s.cache {
 		if !f(k, v.OriginalURL, v.UUID) {
@@ -99,6 +107,7 @@ func (s *FileStorageT) RangeExt(f func(key, value, user string) bool) {
 	}
 }
 
+// Range - method
 func (s *FileStorageT) Range(f func(key, value string) bool) {
 	for k, v := range s.cache {
 		if !f(k, v.OriginalURL) {
@@ -107,14 +116,17 @@ func (s *FileStorageT) Range(f func(key, value string) bool) {
 	}
 }
 
+// Close - method
 func (s *FileStorageT) Close() error {
 	return s.file.Close()
 }
 
+// Ping - method
 func (s *FileStorageT) Ping() error {
 	return nil
 }
 
+// Delete - method
 func (s *FileStorageT) Delete(keys ...string) {
 	for _, key := range keys {
 		delete(s.cache, key)
@@ -141,6 +153,7 @@ func (s *FileStorageT) Delete(keys ...string) {
 	}
 }
 
+// FileStorageRecordT - type
 type FileStorageRecordT struct {
 	UUID        string `json:"uuid"`
 	ShortURL    string `json:"short_url"`

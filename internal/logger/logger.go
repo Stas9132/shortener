@@ -37,6 +37,7 @@ type Log func(l ...interface{})
 // Logf will log a format message at the level given as parameter.
 type Logf func(s string, l ...interface{})
 
+// WithField, WithFields - static methods
 var WithField,
 	WithFields = logger.WithField,
 	logger.WithFields
