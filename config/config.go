@@ -6,6 +6,11 @@ import (
 	"os"
 )
 
+// ServerAddress - address of server
+// BaseURL - base URL
+// LogLevel - logging level
+// FileStoragePath - path of file storage
+// DatabaseDsn - data set name of databse
 var (
 	serverAddress   = "localhost:8080"
 	ServerAddress   = &serverAddress
@@ -19,6 +24,7 @@ var (
 	DatabaseDsn     = &databaseDsn
 )
 
+// Init - config initiator
 func Init(ctx context.Context) {
 	ServerAddress = flag.String("a", "localhost:8080", "Address of http server")
 	BaseURL = flag.String("b", "http://localhost:8080/", "Response prefix")

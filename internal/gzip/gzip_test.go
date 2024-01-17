@@ -1,9 +1,10 @@
 package gzip
 
 import (
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 type mockResponseWriter struct {

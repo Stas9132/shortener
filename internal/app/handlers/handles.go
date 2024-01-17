@@ -4,17 +4,19 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/render"
+	"github.com/Stas9132/shortener/config"
+	"github.com/Stas9132/shortener/internal/app/handlers/middlware"
+	"github.com/Stas9132/shortener/internal/app/model"
+	"github.com/Stas9132/shortener/internal/logger"
 	"io"
 	"net/http"
 	"net/url"
-	"shortener/config"
-	"shortener/internal/app/handlers/middlware"
-	"shortener/internal/app/model"
-	"shortener/internal/logger"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/render"
 )
 
+// APII main interface for handler
 type APII interface {
 	Default(w http.ResponseWriter, r *http.Request)
 	PostPlainText(w http.ResponseWriter, r *http.Request)
@@ -26,6 +28,7 @@ type APII interface {
 	DeleteUserUrls(w http.ResponseWriter, r *http.Request)
 }
 
+// StorageI - interface to storage
 type StorageI interface {
 	Load(key string) (value string, ok bool)
 	Store(key, value string)
@@ -38,11 +41,13 @@ type StorageI interface {
 	Close() error
 }
 
+// APIT - struct with api handlers
 type APIT struct {
 	storage StorageI
 	logger  logger.Logger
 }
 
+// NewAPI() - constructor
 func NewAPI(ctx context.Context, l logger.Logger, storage StorageI) APIT {
 	return APIT{storage: storage, logger: l}
 }
@@ -64,10 +69,12 @@ func getHash(b []byte) string {
 	return hex.EncodeToString(d)
 }
 
+// Default - api handler
 func (a APIT) Default(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusBadRequest)
 }
 
+// PostPlainText - api handler
 func (a APIT) PostPlainText(w http.ResponseWriter, r *http.Request) {
 	b, e := io.ReadAll(r.Body)
 	if e != nil {
@@ -103,6 +110,7 @@ func (a APIT) PostPlainText(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(shortURL))
 }
 
+// PostJSON - api handler
 func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 	var request model.Request
 	var response model.Response
@@ -142,6 +150,7 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, response)
 }
 
+// GetUserURLs - api handler
 func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	var lu model.ListURLs
 	a.storage.RangeExt(func(key, value, user string) bool {
@@ -176,6 +185,7 @@ func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, lu)
 }
 
+// GetRoot - api handler
 func (a APIT) GetRoot(w http.ResponseWriter, r *http.Request) {
 	shortURL, e := url.JoinPath(
 		*config.BaseURL,
@@ -200,6 +210,7 @@ func (a APIT) GetRoot(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(s))
 }
 
+// GetPing - api handler
 func (a APIT) GetPing(w http.ResponseWriter, r *http.Request) {
 	err := a.storage.Ping()
 	if err != nil {
@@ -209,6 +220,7 @@ func (a APIT) GetPing(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// PostBatch - api handler
 func (a APIT) PostBatch(w http.ResponseWriter, r *http.Request) {
 	var batch model.Batch
 
@@ -243,6 +255,7 @@ func (a APIT) PostBatch(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, batch)
 }
 
+// DeleteUserUrls - api handler
 func (a APIT) DeleteUserUrls(w http.ResponseWriter, r *http.Request) {
 	var batch model.BatchDelete
 

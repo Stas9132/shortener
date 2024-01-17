@@ -1,4 +1,4 @@
-module shortener
+module github.com/Stas9132/shortener
 
 go 1.21.0
 

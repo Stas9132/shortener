@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/Stas9132/shortener/config"
+	"github.com/Stas9132/shortener/internal/logger"
+
 	"github.com/golang-migrate/migrate"
 	"github.com/golang-migrate/migrate/database/postgres"
 	_ "github.com/golang-migrate/migrate/source/file"
@@ -11,8 +14,6 @@ import (
 	"github.com/jackc/pgerrcode"
 	_ "github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"shortener/config"
-	"shortener/internal/logger"
 )
 
 type DBT struct {
