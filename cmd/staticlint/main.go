@@ -7,6 +7,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
+// Analyzer ...
 var Analyzer = &analysis.Analyzer{
 	Name: "noosexit",
 	Doc:  "report calls to os.Exit in main function of main package",
