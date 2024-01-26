@@ -1,3 +1,4 @@
+// Package handlers ...
 package handlers
 
 import (
@@ -5,7 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"github.com/Stas9132/shortener/config"
-	"github.com/Stas9132/shortener/internal/app/handlers/middlware"
+	"github.com/Stas9132/shortener/internal/app/handlers/middleware"
 	"github.com/Stas9132/shortener/internal/app/model"
 	"github.com/Stas9132/shortener/internal/logger"
 	"io"
@@ -99,7 +100,7 @@ func (a APIT) PostPlainText(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, exist := a.storage.LoadOrStoreExt(shortURL, string(b), middlware.GetIssuer(r.Context()).ID)
+	_, exist := a.storage.LoadOrStoreExt(shortURL, string(b), middleware.GetIssuer(r.Context()).ID)
 
 	if exist {
 		w.WriteHeader(http.StatusConflict)
@@ -138,7 +139,7 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, exist := a.storage.LoadOrStoreExt(shortURL, request.URL.String(), middlware.GetIssuer(r.Context()).ID)
+	_, exist := a.storage.LoadOrStoreExt(shortURL, request.URL.String(), middleware.GetIssuer(r.Context()).ID)
 
 	response.Result = shortURL
 	if exist {
@@ -162,14 +163,14 @@ func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 		return true
 	})
 
-	switch middlware.GetIssuer(r.Context()).State {
+	switch middleware.GetIssuer(r.Context()).State {
 	case "NEW":
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	case "ESTABLISHED":
 		var tlu model.ListURLs
 		for _, u := range lu {
-			if u.User == middlware.GetIssuer(r.Context()).ID {
+			if u.User == middleware.GetIssuer(r.Context()).ID {
 				tlu = append(tlu, u)
 			}
 		}

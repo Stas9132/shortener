@@ -1,2 +1,2 @@
-// logger - interface to various logger packages
+// Package logger - interface to various logger packages
 package logger

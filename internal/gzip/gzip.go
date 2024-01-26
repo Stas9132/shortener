@@ -1,3 +1,4 @@
+// Package gzip ...
 package gzip
 
 import (

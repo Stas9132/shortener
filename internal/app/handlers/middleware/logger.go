@@ -1,4 +1,4 @@
-package middlware
+package middleware
 
 import (
 	"github.com/Stas9132/shortener/internal/logger"

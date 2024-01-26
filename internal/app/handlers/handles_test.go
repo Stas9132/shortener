@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/Stas9132/shortener/config"
-	"github.com/Stas9132/shortener/internal/app/handlers/middlware"
+	"github.com/Stas9132/shortener/internal/app/handlers/middleware"
 	"github.com/Stas9132/shortener/internal/app/model"
 	strg "github.com/Stas9132/shortener/internal/app/storage"
 	"github.com/Stas9132/shortener/internal/logger"
@@ -196,7 +196,7 @@ got status BadRequest`,
 			}
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPost, "http://localhost/", tt.args.body)
-			middlware.Authorization(http.HandlerFunc(a.PostPlainText)).ServeHTTP(w, r)
+			middleware.Authorization(http.HandlerFunc(a.PostPlainText)).ServeHTTP(w, r)
 			resp := w.Result()
 			defer resp.Body.Close()
 			assert.Equal(t, tt.wantStatus, resp.StatusCode)

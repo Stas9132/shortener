@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/Stas9132/shortener/config"
 	"github.com/Stas9132/shortener/internal/app/handlers"
-	"github.com/Stas9132/shortener/internal/app/handlers/middlware"
+	"github.com/Stas9132/shortener/internal/app/handlers/middleware"
 	"github.com/Stas9132/shortener/internal/app/storage"
 	"github.com/Stas9132/shortener/internal/gzip"
 	"github.com/Stas9132/shortener/internal/logger"
@@ -21,7 +21,7 @@ import (
 
 func mRouter(handler handlers.APII) {
 	r := chi.NewRouter()
-	r.Use(middlware.RequestLogger, middlware.Authorization, gzip.GzipMiddleware)
+	r.Use(middleware.RequestLogger, middleware.Authorization, gzip.GzipMiddleware)
 
 	r.Post("/", handler.PostPlainText)
 	r.Get("/{sn}", handler.GetRoot)
