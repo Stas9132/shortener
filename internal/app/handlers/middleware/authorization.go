@@ -1,4 +1,4 @@
-package middlware
+package middleware
 
 import (
 	"context"
@@ -13,11 +13,13 @@ import (
 
 const key = "secret_key"
 
+// Issuer struct
 type Issuer struct {
 	ID    string
 	State string
 }
 
+// GetIssuer from context
 func GetIssuer(ctx context.Context) *Issuer {
 	s, ok := ctx.Value(Issuer{}).(*Issuer)
 	if !ok {
@@ -34,12 +36,14 @@ type authWriter struct {
 	http.ResponseWriter
 }
 
+// WriteHeader overridden metod
 func (w authWriter) WriteHeader(statusCode int) {
 	http.SetCookie(w, w.c)
 	w.Header().Set("Authorization", w.c.Value)
 	w.ResponseWriter.WriteHeader(statusCode)
 }
 
+// Authorization middleware
 func Authorization(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie("auth")

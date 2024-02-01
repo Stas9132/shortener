@@ -1,4 +1,4 @@
-package middlware
+package middleware
 
 import (
 	"github.com/Stas9132/shortener/internal/logger"
@@ -17,17 +17,20 @@ type loggingResponseWriter struct {
 	responseData *responseData
 }
 
+// Write - overridden method
 func (r loggingResponseWriter) Write(b []byte) (int, error) {
 	size, err := r.ResponseWriter.Write(b)
 	r.responseData.size += size
 	return size, err
 }
 
+// WriteHeader - overridden method
 func (r loggingResponseWriter) WriteHeader(statusCode int) {
 	r.ResponseWriter.WriteHeader(statusCode)
 	r.responseData.status = statusCode
 }
 
+// RequestLogger - middleware
 func RequestLogger(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t := time.Now()
