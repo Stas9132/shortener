@@ -33,7 +33,7 @@ var C = Config{
 func Init(ctx context.Context) {
 	var config string
 
-	flagSet := flag.NewFlagSet("config", flag.PanicOnError)
+	flagSet := flag.NewFlagSet("config", flag.ContinueOnError)
 	flagSet.StringVar(&config, "c", "", "name of config")
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		log.Println(err)
