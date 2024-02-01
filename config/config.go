@@ -3,18 +3,20 @@ package config
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
+	"log"
 	"os"
 )
 
 // Config - ...
 type Config struct {
-	ServerAddress    string
-	BaseURL          string
-	LogLevel         string
-	FileStoragePath  string
-	DatabaseDsn      string
-	SecureConnection bool
+	ServerAddress    string `json:"server_address"`
+	BaseURL          string `json:"base_url"`
+	LogLevel         string `json:"log_level"`
+	FileStoragePath  string `json:"file_storage_path"`
+	DatabaseDsn      string `json:"database_dsn"`
+	SecureConnection bool   `json:"enable_https"`
 }
 
 // C - ...
@@ -29,6 +31,20 @@ var C = Config{
 
 // Init - config initiator
 func Init(ctx context.Context) {
+	var config string
+
+	flagSet := flag.NewFlagSet("config", flag.PanicOnError)
+	flagSet.StringVar(&config, "c", "", "name of config")
+	if err := flagSet.Parse(os.Args[1:]); err != nil {
+		log.Println(err)
+	}
+	if b, err := os.ReadFile(config); err == nil {
+		if err = json.Unmarshal(b, &C); err != nil {
+			log.Println(err)
+		}
+	}
+
+	flag.StringVar(&config, "c", "", "name of config")
 	flag.StringVar(&C.ServerAddress, "a", "localhost:8080", "Address of http server")
 	flag.StringVar(&C.BaseURL, "b", "http://localhost:8080/", "Response prefix")
 	flag.StringVar(&C.LogLevel, "l", "info", "Set log level")
