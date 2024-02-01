@@ -55,12 +55,23 @@ func run(s *http.Server, h handlers.APII) {
 
 	mRouter(h)
 
-	if err := s.ListenAndServe(); err != nil {
-		t := &net.OpError{}
-		if errors.As(err, &t) {
-			log.Fatal(err)
-		} else {
-			log.Println(err)
+	if *config.SecureConnection {
+		if err := s.ListenAndServeTLS("server.crt", "server.key"); err != nil {
+			t := &net.OpError{}
+			if errors.As(err, &t) {
+				log.Fatal(err)
+			} else {
+				log.Println(err)
+			}
+		}
+	} else {
+		if err := s.ListenAndServe(); err != nil {
+			t := &net.OpError{}
+			if errors.As(err, &t) {
+				log.Fatal(err)
+			} else {
+				log.Println(err)
+			}
 		}
 	}
 }
