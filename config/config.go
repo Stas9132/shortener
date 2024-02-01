@@ -7,12 +7,7 @@ import (
 	"os"
 )
 
-// ServerAddress - address of server
-// BaseURL - base URL
-// LogLevel - logging level
-// FileStoragePath - path of file storage
-// DatabaseDsn - data set name of databse
-
+// Config - ...
 type Config struct {
 	ServerAddress    string
 	BaseURL          string
@@ -22,6 +17,7 @@ type Config struct {
 	SecureConnection bool
 }
 
+// C - ...
 var C = Config{
 	ServerAddress:    "localhost:8080",
 	BaseURL:          "http://localhost:8080/",
