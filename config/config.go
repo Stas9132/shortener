@@ -12,49 +12,52 @@ import (
 // LogLevel - logging level
 // FileStoragePath - path of file storage
 // DatabaseDsn - data set name of databse
-var (
-	serverAddress    = "localhost:8080"
-	ServerAddress    = &serverAddress
-	baseURL          = "http://localhost:8080/"
-	BaseURL          = &baseURL
-	logLevel         = "info"
-	LogLevel         = &logLevel
-	fileStoragePath  = ""
-	FileStoragePath  = &fileStoragePath
-	databaseDsn      = ""
-	DatabaseDsn      = &databaseDsn
-	secureConnection = false
-	SecureConnection = &secureConnection
-)
+
+type Config struct {
+	ServerAddress    string
+	BaseURL          string
+	LogLevel         string
+	FileStoragePath  string
+	DatabaseDsn      string
+	SecureConnection bool
+}
+
+var C = Config{
+	ServerAddress:    "localhost:8080",
+	BaseURL:          "http://localhost:8080/",
+	LogLevel:         "info",
+	FileStoragePath:  "",
+	DatabaseDsn:      "",
+	SecureConnection: false,
+}
 
 // Init - config initiator
 func Init(ctx context.Context) {
-	ServerAddress = flag.String("a", "localhost:8080", "Address of http server")
-	BaseURL = flag.String("b", "http://localhost:8080/", "Response prefix")
-	LogLevel = flag.String("l", "info", "Set log level")
-	FileStoragePath = flag.String("f", "", "Storage file name")
-	DatabaseDsn = flag.String("d", "", "Database dsn")
-	SecureConnection = flag.Bool("s", false, "")
+	flag.StringVar(&C.ServerAddress, "a", "localhost:8080", "Address of http server")
+	flag.StringVar(&C.BaseURL, "b", "http://localhost:8080/", "Response prefix")
+	flag.StringVar(&C.LogLevel, "l", "info", "Set log level")
+	flag.StringVar(&C.FileStoragePath, "f", "", "Storage file name")
+	flag.StringVar(&C.DatabaseDsn, "d", "", "Database dsn")
+	flag.BoolVar(&C.SecureConnection, "s", false, "")
 
 	flag.Parse()
 
 	if v, ok := os.LookupEnv("SERVER_ADDRESS"); ok {
-		ServerAddress = &v
+		C.ServerAddress = v
 	}
 	if v, ok := os.LookupEnv("BASE_URL"); ok {
-		BaseURL = &v
+		C.BaseURL = v
 	}
 	if v, ok := os.LookupEnv("LOG_LEVEL"); ok {
-		LogLevel = &v
+		C.LogLevel = v
 	}
 	if v, ok := os.LookupEnv("FILE_STORAGE_PATH"); ok {
-		FileStoragePath = &v
+		C.FileStoragePath = v
 	}
 	if v, ok := os.LookupEnv("DATABASE_DSN"); ok {
-		DatabaseDsn = &v
+		C.DatabaseDsn = v
 	}
 	if v, ok := os.LookupEnv("ENABLE_HTTPS"); ok && v == "YES" {
-		w := true
-		SecureConnection = &w
+		C.SecureConnection = true
 	}
 }

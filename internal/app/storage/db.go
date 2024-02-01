@@ -26,7 +26,7 @@ type DBT struct {
 
 // NewDB constructor
 func NewDB(ctx context.Context, l logger.Logger) (*DBT, error) {
-	db, err := sql.Open("pgx", *config.DatabaseDsn)
+	db, err := sql.Open("pgx", config.C.DatabaseDsn)
 	if err != nil {
 		logger.WithField("error", err).Errorln("Error while open db")
 		return nil, err
@@ -39,7 +39,7 @@ func NewDB(ctx context.Context, l logger.Logger) (*DBT, error) {
 	}
 	m, err := migrate.NewWithDatabaseInstance(
 		"file://internal/app/storage/migration",
-		"pgx://"+*config.DatabaseDsn, driver)
+		"pgx://"+config.C.DatabaseDsn, driver)
 	if err != nil {
 		logger.WithField("error", err).Errorln("Error while create migrate")
 		return nil, err

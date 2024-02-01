@@ -50,12 +50,12 @@ func mRouter(handler handlers.APII) {
 
 func run(s *http.Server, h handlers.APII) {
 	logger.WithFields(map[string]interface{}{
-		"address": *config.ServerAddress,
+		"address": config.C.ServerAddress,
 	}).Infoln("Starting server")
 
 	mRouter(h)
 
-	if *config.SecureConnection {
+	if config.C.SecureConnection {
 		if err := s.ListenAndServeTLS("server.crt", "server.key"); err != nil {
 			t := &net.OpError{}
 			if errors.As(err, &t) {
@@ -87,7 +87,7 @@ func main() {
 		log.Fatal(err)
 	}
 	var st handlers.StorageI
-	if len(*config.DatabaseDsn) == 0 {
+	if len(config.C.DatabaseDsn) == 0 {
 		st, err = storage.NewFileStorage(ctx, l)
 		if err != nil {
 			log.Fatal(err)
@@ -99,7 +99,7 @@ func main() {
 		}
 	}
 	h := handlers.NewAPI(ctx, l, st)
-	s := &http.Server{Addr: *config.ServerAddress}
+	s := &http.Server{Addr: config.C.ServerAddress}
 	go run(s, h)
 
 	<-ctx.Done()

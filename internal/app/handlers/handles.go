@@ -88,7 +88,7 @@ func (a APIT) PostPlainText(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	shortURL, e := url.JoinPath(
-		*config.BaseURL,
+		config.C.BaseURL,
 		getHash(b))
 	if e != nil {
 		a.logger.WithFields(map[string]interface{}{
@@ -127,7 +127,7 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	shortURL, err := url.JoinPath(
-		*config.BaseURL,
+		config.C.BaseURL,
 		getHash([]byte(request.URL.String())))
 	if err != nil {
 		a.logger.WithFields(map[string]interface{}{
@@ -189,7 +189,7 @@ func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 // GetRoot - api handler
 func (a APIT) GetRoot(w http.ResponseWriter, r *http.Request) {
 	shortURL, e := url.JoinPath(
-		*config.BaseURL,
+		config.C.BaseURL,
 		chi.URLParam(r, "sn"))
 	if e != nil {
 		a.logger.WithFields(map[string]interface{}{
@@ -237,7 +237,7 @@ func (a APIT) PostBatch(w http.ResponseWriter, r *http.Request) {
 	}
 	for i := range batch {
 		batch[i].ShortURL, err = url.JoinPath(
-			*config.BaseURL,
+			config.C.BaseURL,
 			getHash([]byte(batch[i].OriginalURL)))
 		if err != nil {
 			a.logger.WithFields(map[string]interface{}{
@@ -272,7 +272,7 @@ func (a APIT) DeleteUserUrls(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for i := range batch {
-		batch[i], err = url.JoinPath(*config.BaseURL, batch[i])
+		batch[i], err = url.JoinPath(config.C.BaseURL, batch[i])
 		if err != nil {
 			a.logger.WithFields(map[string]interface{}{
 				"remoteAddr": r.RemoteAddr,

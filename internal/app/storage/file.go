@@ -24,10 +24,10 @@ func NewFileStorage(ctx context.Context, l logger.Logger) (*FileStorageT, error)
 	c := make(map[string]FileStorageRecordT)
 	var f *os.File
 
-	if config.FileStoragePath != nil {
+	if config.C.FileStoragePath != "" {
 		var err error
-		f, err = os.OpenFile(*config.FileStoragePath, os.O_CREATE|os.O_RDWR, 0644)
-		if err != nil && len(*config.FileStoragePath) > 0 {
+		f, err = os.OpenFile(config.C.FileStoragePath, os.O_CREATE|os.O_RDWR, 0644)
+		if err != nil && len(config.C.FileStoragePath) > 0 {
 			logger.WithField("error", err).Errorln("Error while open file")
 			return nil, err
 		}
