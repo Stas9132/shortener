@@ -57,3 +57,9 @@ type Batch []struct {
 
 // BatchDelete slice
 type BatchDelete []string
+
+// Stats struct
+type Stats struct {
+	Urls  int `json:"urls"`
+	Users int `json:"users"`
+}

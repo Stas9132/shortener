@@ -42,6 +42,7 @@ func mRouter(handler handlers.APII) {
 	r.Post("/api/shorten/batch", handler.PostBatch)
 	r.Get("/api/user/urls", handler.GetUserURLs)
 	r.Delete("/api/user/urls", handler.DeleteUserUrls)
+	r.Get("/api/internal/stats", handler.GetStats)
 	r.Get("/ping", handler.GetPing)
 	r.NotFound(handler.Default)
 	r.MethodNotAllowed(handler.Default)

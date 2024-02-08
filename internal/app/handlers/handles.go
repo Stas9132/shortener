@@ -27,6 +27,7 @@ type APII interface {
 	GetPing(w http.ResponseWriter, r *http.Request)
 	PostBatch(w http.ResponseWriter, r *http.Request)
 	DeleteUserUrls(w http.ResponseWriter, r *http.Request)
+	GetStats(w http.ResponseWriter, r *http.Request)
 }
 
 // StorageI - interface to storage
@@ -45,12 +46,12 @@ type StorageI interface {
 // APIT - struct with api handlers
 type APIT struct {
 	storage StorageI
-	logger  logger.Logger
+	logger.Logger
 }
 
 // NewAPI() - constructor
 func NewAPI(ctx context.Context, l logger.Logger, storage StorageI) APIT {
-	return APIT{storage: storage, logger: l}
+	return APIT{storage: storage, Logger: l}
 }
 
 //func getHash(b []byte) string {
@@ -79,7 +80,7 @@ func (a APIT) Default(w http.ResponseWriter, r *http.Request) {
 func (a APIT) PostPlainText(w http.ResponseWriter, r *http.Request) {
 	b, e := io.ReadAll(r.Body)
 	if e != nil {
-		a.logger.WithFields(map[string]interface{}{
+		a.WithFields(map[string]interface{}{
 			"remoteAddr": r.RemoteAddr,
 			"uri":        r.RequestURI,
 			"error":      e,
@@ -91,7 +92,7 @@ func (a APIT) PostPlainText(w http.ResponseWriter, r *http.Request) {
 		config.C.BaseURL,
 		getHash(b))
 	if e != nil {
-		a.logger.WithFields(map[string]interface{}{
+		a.WithFields(map[string]interface{}{
 			"remoteAddr": r.RemoteAddr,
 			"uri":        r.RequestURI,
 			"error":      e,
@@ -118,7 +119,7 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
-		a.logger.WithFields(map[string]interface{}{
+		a.WithFields(map[string]interface{}{
 			"remoteAddr": r.RemoteAddr,
 			"uri":        r.RequestURI,
 			"error":      err,
@@ -130,7 +131,7 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 		config.C.BaseURL,
 		getHash([]byte(request.URL.String())))
 	if err != nil {
-		a.logger.WithFields(map[string]interface{}{
+		a.WithFields(map[string]interface{}{
 			"remoteAddr": r.RemoteAddr,
 			"uri":        r.RequestURI,
 			"error":      err,
@@ -192,7 +193,7 @@ func (a APIT) GetRoot(w http.ResponseWriter, r *http.Request) {
 		config.C.BaseURL,
 		chi.URLParam(r, "sn"))
 	if e != nil {
-		a.logger.WithFields(map[string]interface{}{
+		a.WithFields(map[string]interface{}{
 			"remoteAddr": r.RemoteAddr,
 			"uri":        r.RequestURI,
 			"error":      e,
@@ -227,7 +228,7 @@ func (a APIT) PostBatch(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&batch)
 	if err != nil {
-		a.logger.WithFields(map[string]interface{}{
+		a.WithFields(map[string]interface{}{
 			"remoteAddr": r.RemoteAddr,
 			"uri":        r.RequestURI,
 			"error":      err,
@@ -240,7 +241,7 @@ func (a APIT) PostBatch(w http.ResponseWriter, r *http.Request) {
 			config.C.BaseURL,
 			getHash([]byte(batch[i].OriginalURL)))
 		if err != nil {
-			a.logger.WithFields(map[string]interface{}{
+			a.WithFields(map[string]interface{}{
 				"remoteAddr": r.RemoteAddr,
 				"uri":        r.RequestURI,
 				"error":      err,
@@ -262,7 +263,7 @@ func (a APIT) DeleteUserUrls(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&batch)
 	if err != nil {
-		a.logger.WithFields(map[string]interface{}{
+		a.WithFields(map[string]interface{}{
 			"remoteAddr": r.RemoteAddr,
 			"uri":        r.RequestURI,
 			"error":      err,
@@ -274,7 +275,7 @@ func (a APIT) DeleteUserUrls(w http.ResponseWriter, r *http.Request) {
 	for i := range batch {
 		batch[i], err = url.JoinPath(config.C.BaseURL, batch[i])
 		if err != nil {
-			a.logger.WithFields(map[string]interface{}{
+			a.WithFields(map[string]interface{}{
 				"remoteAddr": r.RemoteAddr,
 				"uri":        r.RequestURI,
 				"error":      err,
@@ -285,4 +286,27 @@ func (a APIT) DeleteUserUrls(w http.ResponseWriter, r *http.Request) {
 	go a.storage.Delete(batch...)
 
 	w.WriteHeader(http.StatusAccepted)
+}
+
+// GetStats - api handler
+func (a APIT) GetStats(w http.ResponseWriter, r *http.Request) {
+	users := make(map[string]struct{})
+	urls := make(map[string]struct{})
+
+	a.storage.RangeExt(func(key, value, user string) bool {
+		users[user] = struct{}{}
+		urls[value] = struct{}{}
+		return true
+	})
+
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(model.Stats{
+		Urls:  len(urls),
+		Users: len(users),
+	}); err != nil {
+		a.WithField(
+			"error", err,
+		).Warn("Unable encode json")
+	}
+
 }
