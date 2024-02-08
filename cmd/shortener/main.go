@@ -2,14 +2,20 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"github.com/Stas9132/shortener/config"
 	"github.com/Stas9132/shortener/internal/app/handlers"
 	"github.com/Stas9132/shortener/internal/app/handlers/middleware"
+	"github.com/Stas9132/shortener/internal/app/proto"
 	"github.com/Stas9132/shortener/internal/app/storage"
 	"github.com/Stas9132/shortener/internal/gzip"
 	"github.com/Stas9132/shortener/internal/logger"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/reflection"
 	"log"
 	"net"
 	"net/http"
@@ -81,6 +87,35 @@ func run(s *http.Server, h handlers.APII) {
 	}
 }
 
+func getServerOptions() (opt []grpc.ServerOption) {
+
+	if config.C.SecureConnection {
+		tlsSert, _ := tls.LoadX509KeyPair("server.crt", "server.key")
+		tlsCfg := &tls.Config{Certificates: []tls.Certificate{tlsSert}, ClientAuth: tls.NoClientCert}
+		opt = append(opt, grpc.Creds(credentials.NewTLS(tlsCfg)))
+	} else {
+		opt = append(opt, grpc.Creds(insecure.NewCredentials()))
+	}
+	return
+}
+
+func runGRPC(s *grpc.Server, l logger.Logger) {
+	logger.WithFields(map[string]interface{}{
+		"address": config.C.ServerAddressGRPC,
+	}).Infoln("Starting grpc server")
+
+	listen, err := net.Listen("tcp", config.C.ServerAddressGRPC)
+	if err != nil {
+		log.Fatal(err)
+	}
+	proto.RegisterApiServer(s, handlers.NewGRPCAPI(l))
+	reflection.Register(s)
+
+	if err := s.Serve(listen); err != nil {
+		log.Fatal(err)
+	}
+}
+
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 	defer stop()
@@ -105,12 +140,15 @@ func main() {
 	}
 	h := handlers.NewAPI(ctx, l, st)
 	s := &http.Server{Addr: config.C.ServerAddress}
+	g := grpc.NewServer(getServerOptions()...)
 	go run(s, h)
+	go runGRPC(g, l)
 
 	<-ctx.Done()
 
 	ctx, cansel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cansel()
 	s.Shutdown(ctx)
+	g.GracefulStop()
 	st.Close()
 }
