@@ -112,5 +112,4 @@ func main() {
 	defer cansel()
 	s.Shutdown(ctx)
 	st.Close()
-	time.Sleep(time.Second)
 }
