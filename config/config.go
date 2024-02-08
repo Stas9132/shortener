@@ -3,51 +3,87 @@ package config
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
+	"log"
 	"os"
+	"reflect"
 )
 
-// ServerAddress - address of server
-// BaseURL - base URL
-// LogLevel - logging level
-// FileStoragePath - path of file storage
-// DatabaseDsn - data set name of databse
-var (
-	serverAddress   = "localhost:8080"
-	ServerAddress   = &serverAddress
-	baseURL         = "http://localhost:8080/"
-	BaseURL         = &baseURL
-	logLevel        = "info"
-	LogLevel        = &logLevel
-	fileStoragePath = ""
-	FileStoragePath = &fileStoragePath
-	databaseDsn     = ""
-	DatabaseDsn     = &databaseDsn
-)
+// Config - ...
+type Config struct {
+	ServerAddress    string `json:"server_address"`
+	BaseURL          string `json:"base_url"`
+	LogLevel         string `json:"log_level"`
+	FileStoragePath  string `json:"file_storage_path"`
+	DatabaseDsn      string `json:"database_dsn"`
+	SecureConnection bool   `json:"enable_https"`
+}
+
+// C - ...
+var C = Config{
+	ServerAddress:    "localhost:8080",
+	BaseURL:          "http://localhost:8080/",
+	LogLevel:         "info",
+	FileStoragePath:  "",
+	DatabaseDsn:      "",
+	SecureConnection: false,
+}
 
 // Init - config initiator
 func Init(ctx context.Context) {
-	ServerAddress = flag.String("a", "localhost:8080", "Address of http server")
-	BaseURL = flag.String("b", "http://localhost:8080/", "Response prefix")
-	LogLevel = flag.String("l", "info", "Set log level")
-	FileStoragePath = flag.String("f", "", "Storage file name")
-	DatabaseDsn = flag.String("d", "", "Database dsn")
+	var config string
+
+	def := C
+
+	flagSet := flag.NewFlagSet("config", flag.ContinueOnError)
+	flagSet.StringVar(&config, "c", "", "name of config")
+	if err := flagSet.Parse(os.Args[1:]); err != nil {
+		log.Println(err)
+	}
+	if b, err := os.ReadFile(config); err == nil {
+		if err = json.Unmarshal(b, &C); err != nil {
+			log.Println(err)
+		}
+	}
+
+	d := C
+
+	flag.StringVar(&config, "c", "", "name of config")
+	flag.StringVar(&d.ServerAddress, "a", "localhost:8080", "Address of http server")
+	flag.StringVar(&d.BaseURL, "b", "http://localhost:8080/", "Response prefix")
+	flag.StringVar(&d.LogLevel, "l", "info", "Set log level")
+	flag.StringVar(&d.FileStoragePath, "f", "", "Storage file name")
+	flag.StringVar(&d.DatabaseDsn, "d", "", "Database dsn")
+	flag.BoolVar(&d.SecureConnection, "s", false, "")
 
 	flag.Parse()
 
+	dv := reflect.ValueOf(d)
+	Cv := reflect.ValueOf(&C).Elem()
+	defV := reflect.ValueOf(def)
+	for i := 0; i < dv.NumField(); i++ {
+		if !dv.Field(i).Equal(defV.Field(i)) {
+			Cv.Field(i).Set(dv.Field(i))
+		}
+	}
+
 	if v, ok := os.LookupEnv("SERVER_ADDRESS"); ok {
-		ServerAddress = &v
+		C.ServerAddress = v
 	}
 	if v, ok := os.LookupEnv("BASE_URL"); ok {
-		BaseURL = &v
+		C.BaseURL = v
 	}
 	if v, ok := os.LookupEnv("LOG_LEVEL"); ok {
-		LogLevel = &v
+		C.LogLevel = v
 	}
 	if v, ok := os.LookupEnv("FILE_STORAGE_PATH"); ok {
-		FileStoragePath = &v
+		C.FileStoragePath = v
 	}
 	if v, ok := os.LookupEnv("DATABASE_DSN"); ok {
-		DatabaseDsn = &v
+		C.DatabaseDsn = v
+	}
+	if v, ok := os.LookupEnv("ENABLE_HTTPS"); ok && v == "YES" {
+		C.SecureConnection = true
 	}
 }

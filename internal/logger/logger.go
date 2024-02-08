@@ -83,7 +83,7 @@ var Tracef,
 
 // NewLogrusLogger - Creates a new logger.
 func NewLogrusLogger(ctx context.Context) (*LogrusLogger, error) {
-	lvl, err := logrus.ParseLevel(*config.LogLevel)
+	lvl, err := logrus.ParseLevel(config.C.LogLevel)
 	if err != nil {
 		return nil, err
 	}

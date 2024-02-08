@@ -13,8 +13,8 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -49,24 +49,39 @@ func mRouter(handler handlers.APII) {
 }
 
 func run(s *http.Server, h handlers.APII) {
+	listenSrv := func(f any, parms ...string) {
+		var err error
+		switch t := f.(type) {
+		case func(string, string) error:
+			err = t(parms[0], parms[1])
+		case func() error:
+			err = t()
+		}
+		if err != nil {
+			t := &net.OpError{}
+			if errors.As(err, &t) {
+				log.Fatal(err)
+			} else {
+				log.Println(err)
+			}
+		}
+	}
+
 	logger.WithFields(map[string]interface{}{
-		"address": *config.ServerAddress,
+		"address": config.C.ServerAddress,
 	}).Infoln("Starting server")
 
 	mRouter(h)
 
-	if err := s.ListenAndServe(); err != nil {
-		t := &net.OpError{}
-		if errors.As(err, &t) {
-			log.Fatal(err)
-		} else {
-			log.Println(err)
-		}
+	if config.C.SecureConnection {
+		listenSrv(s.ListenAndServeTLS, "server.crt", "server.key")
+	} else {
+		listenSrv(s.ListenAndServe)
 	}
 }
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 	defer stop()
 
 	config.Init(ctx)
@@ -76,7 +91,7 @@ func main() {
 		log.Fatal(err)
 	}
 	var st handlers.StorageI
-	if len(*config.DatabaseDsn) == 0 {
+	if len(config.C.DatabaseDsn) == 0 {
 		st, err = storage.NewFileStorage(ctx, l)
 		if err != nil {
 			log.Fatal(err)
@@ -88,7 +103,7 @@ func main() {
 		}
 	}
 	h := handlers.NewAPI(ctx, l, st)
-	s := &http.Server{Addr: *config.ServerAddress}
+	s := &http.Server{Addr: config.C.ServerAddress}
 	go run(s, h)
 
 	<-ctx.Done()
@@ -97,5 +112,4 @@ func main() {
 	defer cansel()
 	s.Shutdown(ctx)
 	st.Close()
-	time.Sleep(time.Second)
 }

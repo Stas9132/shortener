@@ -187,12 +187,11 @@ got status BadRequest`,
 			case strings.HasPrefix(tt.name, "#1"):
 				tt.args.body = iotest.ErrReader(errors.New("io error occurred"))
 			case strings.HasPrefix(tt.name, "#2"):
-				wk := config.BaseURL
+				wk := config.C.BaseURL
 				defer func() {
-					config.BaseURL = wk
+					config.C.BaseURL = wk
 				}()
-				str := "ht\tp://wewe.we/"
-				config.BaseURL = &str
+				config.C.BaseURL = "ht\tp://wewe.we/"
 			}
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPost, "http://localhost/", tt.args.body)
@@ -255,12 +254,11 @@ got status BadRequest`,
 			case strings.HasPrefix(tt.name, "#1"):
 				tt.body = iotest.ErrReader(errors.New("io error occurred"))
 			case strings.HasPrefix(tt.name, "#2"):
-				wk := config.BaseURL
+				wk := config.C.BaseURL
 				defer func() {
-					config.BaseURL = wk
+					config.C.BaseURL = wk
 				}()
-				str := "ht\tp://wewe.we/"
-				config.BaseURL = &str
+				config.C.BaseURL = "ht\tp://wewe.we/"
 			}
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPost, "http://localhost/", tt.body)
@@ -327,56 +325,6 @@ list with two record`,
 		})
 	}
 }
-
-//func TestGetByShortName(t *testing.T) {
-//	r := chi.NewRouter()
-//	r.Get("/{sn}", api.GetRoot)
-//	srv := httptest.NewServer(r)
-//	defer srv.Close()
-//	//storage.Add(*config.BaseURL+"1", "https://go.dev/")
-//	type args struct {
-//		path string
-//		body io.Reader
-//	}
-//	tests := []struct {
-//		name       string
-//		args       args
-//		memSlot    string
-//		wantStatus int
-//		wantBody   []byte
-//	}{{
-//		name:       "Success GET",
-//		args:       args{path: "/1", body: nil},
-//		wantStatus: http.StatusTemporaryRedirect,
-//		wantBody:   []byte("https://go.dev/"),
-//	}, {
-//		name:       "Wrong GET",
-//		args:       args{path: "/0", body: nil},
-//		wantStatus: http.StatusBadRequest,
-//		wantBody:   []byte("not found\n"),
-//	}}
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			req, err := http.NewRequest(http.MethodGet, srv.URL+tt.args.path, tt.args.body)
-//			require.NoError(t, err)
-//			cl := http.Client{
-//				Transport: nil,
-//				CheckRedirect: func(req *http.Request, via []*http.Request) error {
-//					return http.ErrUseLastResponse
-//				},
-//				Jar:     nil,
-//				Timeout: 0,
-//			}
-//			resp, err := cl.Do(req)
-//			require.NoError(t, err)
-//			defer resp.Body.Close()
-//			assert.Equal(t, tt.wantStatus, resp.StatusCode)
-//			b, err := io.ReadAll(resp.Body)
-//			require.NoError(t, err)
-//			assert.Equal(t, tt.wantBody, b)
-//		})
-//	}
-//}
 
 func BenchmarkGetHash(b *testing.B) {
 	for i := 0; i < b.N; i++ {
