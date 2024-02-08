@@ -7,6 +7,7 @@ import (
 	"flag"
 	"log"
 	"os"
+	"reflect"
 )
 
 // Config - ...
@@ -33,6 +34,8 @@ var C = Config{
 func Init(ctx context.Context) {
 	var config string
 
+	def := C
+
 	flagSet := flag.NewFlagSet("config", flag.ContinueOnError)
 	flagSet.StringVar(&config, "c", "", "name of config")
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
@@ -44,15 +47,26 @@ func Init(ctx context.Context) {
 		}
 	}
 
+	d := C
+
 	flag.StringVar(&config, "c", "", "name of config")
-	flag.StringVar(&C.ServerAddress, "a", "localhost:8080", "Address of http server")
-	flag.StringVar(&C.BaseURL, "b", "http://localhost:8080/", "Response prefix")
-	flag.StringVar(&C.LogLevel, "l", "info", "Set log level")
-	flag.StringVar(&C.FileStoragePath, "f", "", "Storage file name")
-	flag.StringVar(&C.DatabaseDsn, "d", "", "Database dsn")
-	flag.BoolVar(&C.SecureConnection, "s", false, "")
+	flag.StringVar(&d.ServerAddress, "a", "localhost:8080", "Address of http server")
+	flag.StringVar(&d.BaseURL, "b", "http://localhost:8080/", "Response prefix")
+	flag.StringVar(&d.LogLevel, "l", "info", "Set log level")
+	flag.StringVar(&d.FileStoragePath, "f", "", "Storage file name")
+	flag.StringVar(&d.DatabaseDsn, "d", "", "Database dsn")
+	flag.BoolVar(&d.SecureConnection, "s", false, "")
 
 	flag.Parse()
+
+	dv := reflect.ValueOf(d)
+	Cv := reflect.ValueOf(&C).Elem()
+	defV := reflect.ValueOf(def)
+	for i := 0; i < dv.NumField(); i++ {
+		if !dv.Field(i).Equal(defV.Field(i)) {
+			Cv.Field(i).Set(dv.Field(i))
+		}
+	}
 
 	if v, ok := os.LookupEnv("SERVER_ADDRESS"); ok {
 		C.ServerAddress = v
