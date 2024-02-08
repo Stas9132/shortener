@@ -49,6 +49,24 @@ func mRouter(handler handlers.APII) {
 }
 
 func run(s *http.Server, h handlers.APII) {
+	listenSrv := func(f any, parms ...string) {
+		var err error
+		switch t := f.(type) {
+		case func(string, string) error:
+			err = t(parms[0], parms[1])
+		case func() error:
+			err = t()
+		}
+		if err != nil {
+			t := &net.OpError{}
+			if errors.As(err, &t) {
+				log.Fatal(err)
+			} else {
+				log.Println(err)
+			}
+		}
+	}
+
 	logger.WithFields(map[string]interface{}{
 		"address": config.C.ServerAddress,
 	}).Infoln("Starting server")
@@ -56,23 +74,9 @@ func run(s *http.Server, h handlers.APII) {
 	mRouter(h)
 
 	if config.C.SecureConnection {
-		if err := s.ListenAndServeTLS("server.crt", "server.key"); err != nil {
-			t := &net.OpError{}
-			if errors.As(err, &t) {
-				log.Fatal(err)
-			} else {
-				log.Println(err)
-			}
-		}
+		listenSrv(s.ListenAndServeTLS, "server.crt", "server.key")
 	} else {
-		if err := s.ListenAndServe(); err != nil {
-			t := &net.OpError{}
-			if errors.As(err, &t) {
-				log.Fatal(err)
-			} else {
-				log.Println(err)
-			}
-		}
+		listenSrv(s.ListenAndServe)
 	}
 }
 
