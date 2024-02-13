@@ -138,6 +138,28 @@ func (a *API) Post(request Request, issuer string) (*Response, error) {
 	return response, nil
 }
 
+func (a *API) GetUserURLs(issuer string) (ListURLs, error) {
+	var lu ListURLs
+	a.storage.RangeExt(func(key, value, user string) bool {
+		lu = append(lu, ListURLRecordT{
+			ShortURL:    key,
+			OriginalURL: value,
+			User:        user,
+		})
+		return true
+	})
+
+	var tlu ListURLs
+	for _, u := range lu {
+		if u.User == issuer {
+			tlu = append(tlu, u)
+		}
+	}
+	lu = tlu
+
+	return lu, nil
+}
+
 // getHash - ...
 func getHash(b []byte) string {
 	d := make([]byte, 4)

@@ -34,6 +34,7 @@ type APII interface {
 type ModelAPI interface {
 	PostPlainText(b []byte, issuer string) (string, error)
 	Post(request model.Request, issuer string) (*model.Response, error)
+	GetUserURLs(issuer string) (model.ListURLs, error)
 }
 
 // StorageI - interface to storage
@@ -154,28 +155,21 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 
 // GetUserURLs - api handler
 func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
-	var lu model.ListURLs
-	a.storage.RangeExt(func(key, value, user string) bool {
-		lu = append(lu, model.ListURLRecordT{
-			ShortURL:    key,
-			OriginalURL: value,
-			User:        user,
-		})
-		return true
-	})
-
-	switch middleware.GetIssuer(r.Context()).State {
-	case "NEW":
+	iss := middleware.GetIssuer(r.Context())
+	if iss.State == "NEW" {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
-	case "ESTABLISHED":
-		var tlu model.ListURLs
-		for _, u := range lu {
-			if u.User == middleware.GetIssuer(r.Context()).ID {
-				tlu = append(tlu, u)
-			}
-		}
-		lu = tlu
+	}
+
+	lu, err := a.m.GetUserURLs(iss.ID)
+	if err != nil {
+		a.WithFields(map[string]interface{}{
+			"remoteAddr": r.RemoteAddr,
+			"uri":        r.RequestURI,
+			"error":      err,
+		}).Warn("model.GetUserURLs error")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	if len(lu) == 0 {

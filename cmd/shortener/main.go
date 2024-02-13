@@ -100,7 +100,7 @@ func getServerOptions() (opt []grpc.ServerOption) {
 	return
 }
 
-func runGRPC(s *grpc.Server, l logger.Logger) {
+func runGRPC(s *grpc.Server, l logger.Logger, m *model.API) {
 	logger.WithFields(map[string]interface{}{
 		"address": config.C.ServerAddressGRPC,
 	}).Infoln("Starting grpc server")
@@ -109,7 +109,7 @@ func runGRPC(s *grpc.Server, l logger.Logger) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	proto.RegisterApiServer(s, handlers.NewGRPCAPI(l))
+	proto.RegisterApiServer(s, handlers.NewGRPCAPI(l, m))
 	reflection.Register(s)
 
 	if err := s.Serve(listen); err != nil {
@@ -144,7 +144,7 @@ func main() {
 	s := &http.Server{Addr: config.C.ServerAddress}
 	g := grpc.NewServer(getServerOptions()...)
 	go run(s, h)
-	go runGRPC(g, l)
+	go runGRPC(g, l, m)
 
 	<-ctx.Done()
 

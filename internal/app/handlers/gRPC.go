@@ -2,21 +2,28 @@ package handlers
 
 import (
 	"context"
+	"errors"
+	"github.com/Stas9132/shortener/internal/app/handlers/middleware"
+	"github.com/Stas9132/shortener/internal/app/model"
 	"github.com/Stas9132/shortener/internal/app/proto"
 	"github.com/Stas9132/shortener/internal/logger"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"net/url"
 )
 
 // GRPCAPI - ...
 type GRPCAPI struct {
 	logger.Logger
 	proto.UnimplementedApiServer
+	grpc.ServiceInfo
+	m ModelAPI
 }
 
 // NewGRPCAPI - ...
-func NewGRPCAPI(l logger.Logger) *GRPCAPI {
-	return &GRPCAPI{Logger: l}
+func NewGRPCAPI(l logger.Logger, m ModelAPI) *GRPCAPI {
+	return &GRPCAPI{Logger: l, m: m}
 }
 
 // Get - ...
@@ -26,7 +33,24 @@ func (a *GRPCAPI) Get(ctx context.Context, in *proto.ShortUrl) (*proto.OriginalU
 
 // Post - ...
 func (a *GRPCAPI) Post(ctx context.Context, in *proto.OriginalURL) (*proto.ShortUrl, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Post not implemented")
+	u, err := url.Parse(in.GetURL())
+	if err != nil {
+		a.WithFields(map[string]interface{}{
+			"error": err,
+		}).Warn("url.Parse error")
+	}
+	response, err := a.m.Post(model.Request{URL: u}, middleware.GetIssuer(ctx).ID)
+
+	if err != nil {
+		if !errors.Is(err, model.ErrExist) {
+			a.WithFields(map[string]interface{}{
+				"error": err,
+			}).Warn("model.Post error")
+			return nil, err
+		}
+		return &proto.ShortUrl{URL: response.Result}, status.Error(codes.AlreadyExists, err.Error())
+	}
+	return &proto.ShortUrl{URL: response.Result}, nil
 }
 
 // PostBatch - ...
