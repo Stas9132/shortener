@@ -108,7 +108,7 @@ func (a *API) PostPlainText(b []byte, issuer string) (string, error) {
 	_, exist := a.storage.LoadOrStoreExt(shortURL, string(b), issuer)
 
 	if exist {
-		return "", ErrExist
+		return shortURL, ErrExist
 	}
 	return shortURL, nil
 }
