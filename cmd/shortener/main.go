@@ -8,6 +8,7 @@ import (
 	"github.com/Stas9132/shortener/config"
 	"github.com/Stas9132/shortener/internal/app/handlers"
 	"github.com/Stas9132/shortener/internal/app/handlers/middleware"
+	"github.com/Stas9132/shortener/internal/app/model"
 	"github.com/Stas9132/shortener/internal/app/proto"
 	"github.com/Stas9132/shortener/internal/app/storage"
 	"github.com/Stas9132/shortener/internal/gzip"
@@ -138,7 +139,8 @@ func main() {
 			log.Fatal(err)
 		}
 	}
-	h := handlers.NewAPI(ctx, l, st)
+	m := model.NewAPI(l, st)
+	h := handlers.NewAPI(ctx, l, st, m)
 	s := &http.Server{Addr: config.C.ServerAddress}
 	g := grpc.NewServer(getServerOptions()...)
 	go run(s, h)

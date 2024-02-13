@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"github.com/Stas9132/shortener/config"
 	"github.com/Stas9132/shortener/internal/app/handlers/middleware"
 	"github.com/Stas9132/shortener/internal/app/model"
@@ -30,6 +31,10 @@ type APII interface {
 	GetStats(w http.ResponseWriter, r *http.Request)
 }
 
+type ModelAPI interface {
+	PostPlainText(b []byte, issuer string) (string, error)
+}
+
 // StorageI - interface to storage
 type StorageI interface {
 	Load(key string) (value string, ok bool)
@@ -47,11 +52,12 @@ type StorageI interface {
 type APIT struct {
 	storage StorageI
 	logger.Logger
+	m ModelAPI
 }
 
 // NewAPI() - constructor
-func NewAPI(ctx context.Context, l logger.Logger, storage StorageI) APIT {
-	return APIT{storage: storage, Logger: l}
+func NewAPI(ctx context.Context, l logger.Logger, storage StorageI, model ModelAPI) APIT {
+	return APIT{storage: storage, Logger: l, m: model}
 }
 
 //func getHash(b []byte) string {
@@ -88,28 +94,25 @@ func (a APIT) PostPlainText(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, e.Error(), http.StatusBadRequest)
 		return
 	}
-	shortURL, e := url.JoinPath(
-		config.C.BaseURL,
-		getHash(b))
+
+	resp, e := a.m.PostPlainText(b, middleware.GetIssuer(r.Context()).ID)
+
 	if e != nil {
-		a.WithFields(map[string]interface{}{
-			"remoteAddr": r.RemoteAddr,
-			"uri":        r.RequestURI,
-			"error":      e,
-		}).Warn("url.JoinPath error")
-		http.Error(w, e.Error(), http.StatusBadRequest)
-		return
-	}
-
-	_, exist := a.storage.LoadOrStoreExt(shortURL, string(b), middleware.GetIssuer(r.Context()).ID)
-
-	if exist {
+		if !errors.Is(e, model.ExistErr) {
+			a.WithFields(map[string]interface{}{
+				"remoteAddr": r.RemoteAddr,
+				"uri":        r.RequestURI,
+				"error":      e,
+			}).Warn("url.JoinPath error")
+			http.Error(w, e.Error(), http.StatusBadRequest)
+			return
+		}
 		w.WriteHeader(http.StatusConflict)
-		_, _ = w.Write([]byte(shortURL))
+		_, _ = w.Write([]byte(resp))
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
-	_, _ = w.Write([]byte(shortURL))
+	_, _ = w.Write([]byte(resp))
 }
 
 // PostJSON - api handler

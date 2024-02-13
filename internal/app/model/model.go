@@ -2,7 +2,11 @@
 package model
 
 import (
+	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"github.com/Stas9132/shortener/config"
+	"github.com/Stas9132/shortener/internal/logger"
 	"net/url"
 	"strconv"
 )
@@ -62,4 +66,58 @@ type BatchDelete []string
 type Stats struct {
 	Urls  int `json:"urls"`
 	Users int `json:"users"`
+}
+
+type Storage interface {
+	Load(key string) (value string, ok bool)
+	Store(key, value string)
+	RangeExt(f func(key, value, user string) bool)
+	Range(f func(key, value string) bool)
+	LoadOrStore(key, value string) (actual string, loaded bool)
+	LoadOrStoreExt(key, value, user string) (actual string, loaded bool)
+	Delete(keys ...string)
+	Ping() error
+	Close() error
+}
+
+// ExistErr - ...
+var ExistErr = errors.New("already exist")
+
+// API - ...
+type API struct {
+	logger.Logger
+	storage Storage
+}
+
+func NewAPI(logger logger.Logger, storage Storage) *API {
+	return &API{Logger: logger, storage: storage}
+}
+
+// PostPlainText - api handler
+func (a *API) PostPlainText(b []byte, issuer string) (string, error) {
+	shortURL, e := url.JoinPath(
+		config.C.BaseURL,
+		getHash(b))
+	if e != nil {
+		a.WithFields(map[string]interface{}{
+			"error": e,
+		}).Warn("url.JoinPath error")
+		return "", e
+	}
+
+	_, exist := a.storage.LoadOrStoreExt(shortURL, string(b), issuer)
+
+	if exist {
+		return "", ExistErr
+	}
+	return shortURL, nil
+}
+
+// getHash - ...
+func getHash(b []byte) string {
+	d := make([]byte, 4)
+	for i, v := range b {
+		d[i%4] += v
+	}
+	return hex.EncodeToString(d)
 }
