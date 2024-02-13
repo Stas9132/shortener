@@ -106,13 +106,36 @@ func (a *API) PostPlainText(b []byte, issuer string) (string, error) {
 		}).Warn("url.JoinPath error")
 		return "", e
 	}
-
 	_, exist := a.storage.LoadOrStoreExt(shortURL, string(b), issuer)
 
 	if exist {
 		return shortURL, ErrExist
 	}
 	return shortURL, nil
+}
+
+func (a *API) Post(request Request, issuer string) (*Response, error) {
+
+	shortURL, err := url.JoinPath(
+		config.C.BaseURL,
+		getHash([]byte(request.URL.String())))
+
+	if err != nil {
+		a.WithFields(map[string]interface{}{
+			"error": err,
+		}).Warn("url.JoinPath")
+		return nil, err
+	}
+
+	_, exist := a.storage.LoadOrStoreExt(shortURL, request.URL.String(), issuer)
+
+	response := &Response{}
+	response.Result = shortURL
+	if exist {
+		return response, ErrExist
+	}
+
+	return response, nil
 }
 
 // getHash - ...

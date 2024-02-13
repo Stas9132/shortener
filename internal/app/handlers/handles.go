@@ -33,6 +33,7 @@ type APII interface {
 
 type ModelAPI interface {
 	PostPlainText(b []byte, issuer string) (string, error)
+	Post(request model.Request, issuer string) (*model.Response, error)
 }
 
 // StorageI - interface to storage
@@ -118,7 +119,6 @@ func (a APIT) PostPlainText(w http.ResponseWriter, r *http.Request) {
 // PostJSON - api handler
 func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 	var request model.Request
-	var response model.Response
 
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
@@ -130,27 +130,24 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	shortURL, err := url.JoinPath(
-		config.C.BaseURL,
-		getHash([]byte(request.URL.String())))
+
+	response, err := a.m.Post(request, middleware.GetIssuer(r.Context()).ID)
+
 	if err != nil {
-		a.WithFields(map[string]interface{}{
-			"remoteAddr": r.RemoteAddr,
-			"uri":        r.RequestURI,
-			"error":      err,
-		}).Warn("url.JoinPath")
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	_, exist := a.storage.LoadOrStoreExt(shortURL, request.URL.String(), middleware.GetIssuer(r.Context()).ID)
-
-	response.Result = shortURL
-	if exist {
+		if !errors.Is(err, model.ErrExist) {
+			a.WithFields(map[string]interface{}{
+				"remoteAddr": r.RemoteAddr,
+				"uri":        r.RequestURI,
+				"error":      err,
+			}).Warn("url.JoinPath error")
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		render.Status(r, http.StatusConflict)
 		render.JSON(w, r, response)
 		return
 	}
+
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, response)
 }
