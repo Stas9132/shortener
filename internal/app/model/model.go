@@ -2,11 +2,12 @@
 package model
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/Stas9132/shortener/config"
+	"github.com/Stas9132/shortener/internal/app/handlers/middleware"
 	"github.com/Stas9132/shortener/internal/logger"
 	"net/url"
 	"strconv"
@@ -85,6 +86,9 @@ type Storage interface {
 // ErrExist - ...
 var ErrExist = errors.New("already exist")
 
+// ErrUnauthorized - ...
+var ErrUnauthorized = errors.New("unauthorized")
+
 // API - ...
 type API struct {
 	logger.Logger
@@ -139,7 +143,7 @@ func (a *API) Post(request Request, issuer string) (*Response, error) {
 	return response, nil
 }
 
-func (a *API) GetUserURLs(issuer string) (ListURLs, error) {
+func (a *API) GetUserURLs(ctx context.Context) (ListURLs, error) {
 	var lu ListURLs
 	a.storage.RangeExt(func(key, value, user string) bool {
 		lu = append(lu, ListURLRecordT{
@@ -150,17 +154,18 @@ func (a *API) GetUserURLs(issuer string) (ListURLs, error) {
 		return true
 	})
 
-	var tlu ListURLs
-	for _, u := range lu {
-		if u.User == issuer {
-			tlu = append(tlu, u)
+	switch middleware.GetIssuer(ctx).State {
+	case "NEW":
+		return nil, ErrUnauthorized
+	case "ESTABLISHED":
+		var tlu ListURLs
+		for _, u := range lu {
+			if u.User == middleware.GetIssuer(ctx).ID {
+				tlu = append(tlu, u)
+			}
 		}
+		lu = tlu
 	}
-	fmt.Println(lu)
-	fmt.Println(tlu)
-	fmt.Println(issuer)
-
-	lu = tlu
 
 	return lu, nil
 }

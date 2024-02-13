@@ -10,12 +10,11 @@ import (
 	"github.com/Stas9132/shortener/internal/app/handlers/middleware"
 	"github.com/Stas9132/shortener/internal/app/model"
 	"github.com/Stas9132/shortener/internal/logger"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/render"
 	"io"
 	"net/http"
 	"net/url"
-
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/render"
 )
 
 // APII main interface for handler
@@ -34,7 +33,7 @@ type APII interface {
 type ModelAPI interface {
 	PostPlainText(b []byte, issuer string) (string, error)
 	Post(request model.Request, issuer string) (*model.Response, error)
-	GetUserURLs(issuer string) (model.ListURLs, error)
+	GetUserURLs(ctx context.Context) (model.ListURLs, error)
 }
 
 // StorageI - interface to storage
@@ -155,28 +154,20 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 
 // GetUserURLs - api handler
 func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
-	var lu model.ListURLs
-	a.storage.RangeExt(func(key, value, user string) bool {
-		lu = append(lu, model.ListURLRecordT{
-			ShortURL:    key,
-			OriginalURL: value,
-			User:        user,
-		})
-		return true
-	})
 
-	switch middleware.GetIssuer(r.Context()).State {
-	case "NEW":
+	lu, err := a.m.GetUserURLs(r.Context())
+	if err != nil {
+		if errors.Is(err, model.ErrUnauthorized) {
+			a.WithFields(map[string]interface{}{
+				"remoteAddr": r.RemoteAddr,
+				"uri":        r.RequestURI,
+				"error":      err,
+			}).Warn("url.JoinPath error")
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		w.WriteHeader(http.StatusUnauthorized)
 		return
-	case "ESTABLISHED":
-		var tlu model.ListURLs
-		for _, u := range lu {
-			if u.User == middleware.GetIssuer(r.Context()).ID {
-				tlu = append(tlu, u)
-			}
-		}
-		lu = tlu
 	}
 
 	if len(lu) == 0 {
