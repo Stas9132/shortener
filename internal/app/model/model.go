@@ -89,6 +89,9 @@ var ErrExist = errors.New("already exist")
 // ErrUnauthorized - ...
 var ErrUnauthorized = errors.New("unauthorized")
 
+// ErrNotFound - ...
+var ErrNotFound = errors.New("not found")
+
 // API - ...
 type API struct {
 	logger.Logger
@@ -168,6 +171,22 @@ func (a *API) GetUserURLs(ctx context.Context) (ListURLs, error) {
 	}
 
 	return lu, nil
+}
+
+func (a *API) GetRoot(sn string) (string, error) {
+	shortURL, e := url.JoinPath(config.C.BaseURL, sn)
+	if e != nil {
+		a.WithFields(map[string]interface{}{
+			"error": e,
+		}).Warn("url.JoinPath")
+		return "", e
+	}
+
+	s, ok := a.storage.Load(shortURL)
+	if !ok {
+		return "", ErrNotFound
+	}
+	return s, nil
 }
 
 // getHash - ...

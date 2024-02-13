@@ -34,6 +34,7 @@ type ModelAPI interface {
 	PostPlainText(b []byte, issuer string) (string, error)
 	Post(request model.Request, issuer string) (*model.Response, error)
 	GetUserURLs(ctx context.Context) (model.ListURLs, error)
+	GetRoot(sn string) (string, error)
 }
 
 // StorageI - interface to storage
@@ -181,21 +182,17 @@ func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 
 // GetRoot - api handler
 func (a APIT) GetRoot(w http.ResponseWriter, r *http.Request) {
-	shortURL, e := url.JoinPath(
-		config.C.BaseURL,
-		chi.URLParam(r, "sn"))
-	if e != nil {
-		a.WithFields(map[string]interface{}{
-			"remoteAddr": r.RemoteAddr,
-			"uri":        r.RequestURI,
-			"error":      e,
-		}).Warn("url.JoinPath")
-		http.Error(w, e.Error(), http.StatusBadRequest)
-		return
-	}
-
-	s, ok := a.storage.Load(shortURL)
-	if !ok {
+	s, err := a.m.GetRoot(chi.URLParam(r, "sn"))
+	if err != nil {
+		if !errors.Is(err, model.ErrNotFound) {
+			a.WithFields(map[string]interface{}{
+				"remoteAddr": r.RemoteAddr,
+				"uri":        r.RequestURI,
+				"error":      err,
+			}).Warn("model.GetRoot")
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		w.WriteHeader(http.StatusGone)
 		return
 	}

@@ -83,7 +83,7 @@ func (a *GRPCAPI) GetUserURLs(ctx context.Context, in *proto.Empty) (*proto.Batc
 				ShortUrl:    t.ShortURL,
 			})
 		}
-		return nil
+		return res
 	}()}, nil
 }
 
