@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/Stas9132/shortener/config"
 	"github.com/Stas9132/shortener/internal/app/handlers/middleware"
 	"github.com/Stas9132/shortener/internal/app/model"
@@ -156,6 +157,7 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 // GetUserURLs - api handler
 func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	iss := middleware.GetIssuer(r.Context())
+	fmt.Println("iii", iss)
 	if iss.State == "NEW" {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
