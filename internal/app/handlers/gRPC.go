@@ -60,7 +60,31 @@ func (a *GRPCAPI) PostBatch(ctx context.Context, in *proto.Batch) (*proto.Batch,
 
 // GetUserURLs - ...
 func (a *GRPCAPI) GetUserURLs(ctx context.Context, in *proto.Empty) (*proto.Batch, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetUserURLs not implemented")
+	lu, err := a.m.GetUserURLs(ctx)
+	if err != nil {
+		if errors.Is(err, model.ErrUnauthorized) {
+			a.WithFields(map[string]interface{}{
+				"error": err,
+			}).Warn("model.GetUserURLs error")
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		return nil, status.Error(codes.PermissionDenied, err.Error())
+	}
+
+	if len(lu) == 0 {
+		return nil, status.Error(codes.NotFound, "")
+	}
+
+	return &proto.Batch{Records: func() []*proto.URLRecord {
+		var res []*proto.URLRecord
+		for _, t := range lu {
+			res = append(res, &proto.URLRecord{
+				OriginalURL: t.OriginalURL,
+				ShortUrl:    t.ShortURL,
+			})
+		}
+		return nil
+	}()}, nil
 }
 
 // DeleteUserURLs - ...

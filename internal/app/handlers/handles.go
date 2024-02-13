@@ -162,7 +162,7 @@ func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 				"remoteAddr": r.RemoteAddr,
 				"uri":        r.RequestURI,
 				"error":      err,
-			}).Warn("url.JoinPath error")
+			}).Warn("model.GetUserURLs error")
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
