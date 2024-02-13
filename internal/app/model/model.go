@@ -80,8 +80,8 @@ type Storage interface {
 	Close() error
 }
 
-// ExistErr - ...
-var ExistErr = errors.New("already exist")
+// ErrExist - ...
+var ErrExist = errors.New("already exist")
 
 // API - ...
 type API struct {
@@ -108,7 +108,7 @@ func (a *API) PostPlainText(b []byte, issuer string) (string, error) {
 	_, exist := a.storage.LoadOrStoreExt(shortURL, string(b), issuer)
 
 	if exist {
-		return "", ExistErr
+		return "", ErrExist
 	}
 	return shortURL, nil
 }

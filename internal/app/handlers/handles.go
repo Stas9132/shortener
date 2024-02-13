@@ -98,7 +98,7 @@ func (a APIT) PostPlainText(w http.ResponseWriter, r *http.Request) {
 	resp, e := a.m.PostPlainText(b, middleware.GetIssuer(r.Context()).ID)
 
 	if e != nil {
-		if !errors.Is(e, model.ExistErr) {
+		if !errors.Is(e, model.ErrExist) {
 			a.WithFields(map[string]interface{}{
 				"remoteAddr": r.RemoteAddr,
 				"uri":        r.RequestURI,
