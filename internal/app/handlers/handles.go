@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/Stas9132/shortener/config"
 	"github.com/Stas9132/shortener/internal/app/handlers/middleware"
 	"github.com/Stas9132/shortener/internal/app/model"
@@ -156,22 +155,28 @@ func (a APIT) PostJSON(w http.ResponseWriter, r *http.Request) {
 
 // GetUserURLs - api handler
 func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
-	iss := middleware.GetIssuer(r.Context())
-	fmt.Println("iii", iss)
-	if iss.State == "NEW" {
+	var lu model.ListURLs
+	a.storage.RangeExt(func(key, value, user string) bool {
+		lu = append(lu, model.ListURLRecordT{
+			ShortURL:    key,
+			OriginalURL: value,
+			User:        user,
+		})
+		return true
+	})
+
+	switch middleware.GetIssuer(r.Context()).State {
+	case "NEW":
 		w.WriteHeader(http.StatusUnauthorized)
 		return
-	}
-
-	lu, err := a.m.GetUserURLs(iss.ID)
-	if err != nil {
-		a.WithFields(map[string]interface{}{
-			"remoteAddr": r.RemoteAddr,
-			"uri":        r.RequestURI,
-			"error":      err,
-		}).Warn("model.GetUserURLs error")
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+	case "ESTABLISHED":
+		var tlu model.ListURLs
+		for _, u := range lu {
+			if u.User == middleware.GetIssuer(r.Context()).ID {
+				tlu = append(tlu, u)
+			}
+		}
+		lu = tlu
 	}
 
 	if len(lu) == 0 {

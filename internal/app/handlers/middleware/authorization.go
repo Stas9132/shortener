@@ -3,7 +3,6 @@ package middleware
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/Stas9132/shortener/internal/logger"
 	"net/http"
 	"time"
@@ -84,7 +83,6 @@ func Authorization(h http.Handler) http.Handler {
 				Value: j,
 			}
 		}
-		fmt.Println("aaaaaaaaaaaaaaaaaaaaaaaa", iss)
 		h.ServeHTTP(authWriter{
 			c:              c,
 			ResponseWriter: w,
