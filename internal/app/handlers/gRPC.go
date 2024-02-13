@@ -104,7 +104,11 @@ func (a *GRPCAPI) DeleteUserURLs(ctx context.Context, in *proto.Batch) (*proto.E
 
 // Ping - ...
 func (a *GRPCAPI) Ping(ctx context.Context, in *proto.Empty) (*proto.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
+	err := a.m.GetPing()
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &proto.Empty{}, nil
 }
 
 // GetStats - ...

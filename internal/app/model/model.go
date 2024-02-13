@@ -122,6 +122,7 @@ func (a *API) PostPlainText(b []byte, issuer string) (string, error) {
 	return shortURL, nil
 }
 
+// Post - ...
 func (a *API) Post(request Request, issuer string) (*Response, error) {
 
 	shortURL, err := url.JoinPath(
@@ -146,6 +147,7 @@ func (a *API) Post(request Request, issuer string) (*Response, error) {
 	return response, nil
 }
 
+// GetUserURLs - ...
 func (a *API) GetUserURLs(ctx context.Context) (ListURLs, error) {
 	var lu ListURLs
 	a.storage.RangeExt(func(key, value, user string) bool {
@@ -173,6 +175,7 @@ func (a *API) GetUserURLs(ctx context.Context) (ListURLs, error) {
 	return lu, nil
 }
 
+// GetRoot - ...
 func (a *API) GetRoot(sn string) (string, error) {
 	shortURL, e := url.JoinPath(config.C.BaseURL, sn)
 	if e != nil {
@@ -187,6 +190,10 @@ func (a *API) GetRoot(sn string) (string, error) {
 		return "", ErrNotFound
 	}
 	return s, nil
+}
+
+func (a *API) GetPing() error {
+	return a.storage.Ping()
 }
 
 // getHash - ...

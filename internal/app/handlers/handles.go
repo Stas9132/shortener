@@ -35,6 +35,7 @@ type ModelAPI interface {
 	Post(request model.Request, issuer string) (*model.Response, error)
 	GetUserURLs(ctx context.Context) (model.ListURLs, error)
 	GetRoot(sn string) (string, error)
+	GetPing() error
 }
 
 // StorageI - interface to storage
@@ -203,7 +204,7 @@ func (a APIT) GetRoot(w http.ResponseWriter, r *http.Request) {
 
 // GetPing - api handler
 func (a APIT) GetPing(w http.ResponseWriter, r *http.Request) {
-	err := a.storage.Ping()
+	err := a.m.GetPing()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
