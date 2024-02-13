@@ -68,6 +68,7 @@ type Stats struct {
 	Users int `json:"users"`
 }
 
+// Storage - ...
 type Storage interface {
 	Load(key string) (value string, ok bool)
 	Store(key, value string)
@@ -89,6 +90,7 @@ type API struct {
 	storage Storage
 }
 
+// NewAPI - ...
 func NewAPI(logger logger.Logger, storage Storage) *API {
 	return &API{Logger: logger, storage: storage}
 }
