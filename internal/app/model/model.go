@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/Stas9132/shortener/config"
 	"github.com/Stas9132/shortener/internal/logger"
 	"net/url"
@@ -155,6 +156,10 @@ func (a *API) GetUserURLs(issuer string) (ListURLs, error) {
 			tlu = append(tlu, u)
 		}
 	}
+	fmt.Println(lu)
+	fmt.Println(tlu)
+	fmt.Println(issuer)
+
 	lu = tlu
 
 	return lu, nil
