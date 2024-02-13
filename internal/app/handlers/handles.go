@@ -158,7 +158,7 @@ func (a APIT) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 
 	lu, err := a.m.GetUserURLs(r.Context())
 	if err != nil {
-		if errors.Is(err, model.ErrUnauthorized) {
+		if !errors.Is(err, model.ErrUnauthorized) {
 			a.WithFields(map[string]interface{}{
 				"remoteAddr": r.RemoteAddr,
 				"uri":        r.RequestURI,
