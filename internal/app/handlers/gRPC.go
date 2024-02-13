@@ -28,7 +28,17 @@ func NewGRPCAPI(l logger.Logger, m ModelAPI) *GRPCAPI {
 
 // Get - ...
 func (a *GRPCAPI) Get(ctx context.Context, in *proto.ShortUrl) (*proto.OriginalURL, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
+	s, err := a.m.GetRoot(in.GetURL())
+	if err != nil {
+		if !errors.Is(err, model.ErrNotFound) {
+			a.WithFields(map[string]interface{}{
+				"error": err,
+			}).Warn("model.GetRoot")
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		return nil, status.Error(codes.NotFound, "")
+	}
+	return &proto.OriginalURL{URL: s}, nil
 }
 
 // Post - ...
@@ -62,7 +72,7 @@ func (a *GRPCAPI) PostBatch(ctx context.Context, in *proto.Batch) (*proto.Batch,
 func (a *GRPCAPI) GetUserURLs(ctx context.Context, in *proto.Empty) (*proto.Batch, error) {
 	lu, err := a.m.GetUserURLs(ctx)
 	if err != nil {
-		if errors.Is(err, model.ErrUnauthorized) {
+		if !errors.Is(err, model.ErrUnauthorized) {
 			a.WithFields(map[string]interface{}{
 				"error": err,
 			}).Warn("model.GetUserURLs error")
