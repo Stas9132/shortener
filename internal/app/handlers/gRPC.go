@@ -65,8 +65,26 @@ func (a *GRPCAPI) Post(ctx context.Context, in *proto.OriginalURL) (*proto.Short
 
 // PostBatch - ...
 func (a *GRPCAPI) PostBatch(ctx context.Context, in *proto.Batch) (*proto.Batch, error) {
+	i, err := a.m.PostBatch(func() model.Batch {
+		var res model.Batch
+		for _, record := range in.GetRecords() {
+			res = append(res, struct {
+				CorrelationID string `json:"correlation_id"`
+				OriginalURL   string `json:"original_url,omitempty"`
+				ShortURL      string `json:"short_url"`
+			}{CorrelationID: "", OriginalURL: record.GetOriginalURL(), ShortURL: ""})
+		}
+		return res
+	}())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
 
-	return nil, status.Errorf(codes.Unimplemented, "method PostBatch not implemented")
+	for j := 0; j <= i; j++ {
+		in.GetRecords()[i].OriginalURL = ""
+	}
+
+	return in, nil
 }
 
 // GetUserURLs - ...
