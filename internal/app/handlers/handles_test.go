@@ -30,7 +30,7 @@ var _ = func() bool {
 }()
 
 var storage, _ = strg.NewFileStorage(context.Background(), logger.NewDummy())
-var api = NewAPI(context.Background(), logger.NewDummy(), storage, model.NewAPI(logger.NewDummy(), storage))
+var api = NewAPI(context.Background(), logger.NewDummy(), model.NewAPI(logger.NewDummy(), storage))
 
 func TestHandlerAndStorage(t *testing.T) {
 	mem := make(map[string]string)
@@ -115,7 +115,7 @@ got status BadRequest`,
 
 func TestPostPlainText(t *testing.T) {
 	s, _ := strg.NewFileStorage(context.Background(), logger.NewDummy())
-	a := NewAPI(context.Background(), logger.NewDummy(), s, model.NewAPI(logger.NewDummy(), s))
+	a := NewAPI(context.Background(), logger.NewDummy(), model.NewAPI(logger.NewDummy(), s))
 	type args struct {
 		body io.Reader
 	}
@@ -242,7 +242,7 @@ got status BadRequest`,
 
 func TestGetUserURLs(t *testing.T) {
 	s, _ := strg.NewFileStorage(context.Background(), logger.NewDummy())
-	a := NewAPI(context.Background(), logger.NewDummy(), s, model.NewAPI(logger.NewDummy(), s))
+	a := NewAPI(context.Background(), logger.NewDummy(), model.NewAPI(logger.NewDummy(), s))
 	srv := httptest.NewServer(http.HandlerFunc(a.GetUserURLs))
 	defer srv.Close()
 	tests := []struct {
