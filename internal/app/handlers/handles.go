@@ -3,10 +3,8 @@ package handlers
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/Stas9132/shortener/config"
 	"github.com/Stas9132/shortener/internal/app/handlers/middleware"
 	"github.com/Stas9132/shortener/internal/app/model"
 	"github.com/Stas9132/shortener/internal/logger"
@@ -14,7 +12,6 @@ import (
 	"github.com/go-chi/render"
 	"io"
 	"net/http"
-	"net/url"
 )
 
 // APII main interface for handler
@@ -37,6 +34,8 @@ type ModelAPI interface {
 	GetRoot(sn string) (string, error)
 	GetPing() error
 	PostBatch(batch model.Batch) (int, error)
+	DeleteUserUrls(batch model.BatchDelete) (int, error)
+	GetStats() (model.Stats, error)
 }
 
 // StorageI - interface to storage
@@ -62,23 +61,6 @@ type APIT struct {
 // NewAPI() - constructor
 func NewAPI(ctx context.Context, l logger.Logger, storage StorageI, model ModelAPI) APIT {
 	return APIT{storage: storage, Logger: l, m: model}
-}
-
-//func getHash(b []byte) string {
-//	h := md5.Sum(b)
-//	d := make([]byte, len(h)/4)
-//	for i := range d {
-//		d[i] = h[i] + h[i+len(h)/4] + h[i+len(h)/2] + h[i+3*len(h)/4]
-//	}
-//	return hex.EncodeToString(d)
-//}
-
-func getHash(b []byte) string {
-	d := make([]byte, 4)
-	for i, v := range b {
-		d[i%4] += v
-	}
-	return hex.EncodeToString(d)
 }
 
 // Default - api handler
@@ -257,38 +239,25 @@ func (a APIT) DeleteUserUrls(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for i := range batch {
-		batch[i], err = url.JoinPath(config.C.BaseURL, batch[i])
-		if err != nil {
-			a.WithFields(map[string]interface{}{
-				"remoteAddr": r.RemoteAddr,
-				"uri":        r.RequestURI,
-				"error":      err,
-			}).Warn("url.JoinPath")
-		}
+	_, err = a.m.DeleteUserUrls(batch)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
-
-	go a.storage.Delete(batch...)
 
 	w.WriteHeader(http.StatusAccepted)
 }
 
 // GetStats - api handler
 func (a APIT) GetStats(w http.ResponseWriter, r *http.Request) {
-	users := make(map[string]struct{})
-	urls := make(map[string]struct{})
-
-	a.storage.RangeExt(func(key, value, user string) bool {
-		users[user] = struct{}{}
-		urls[value] = struct{}{}
-		return true
-	})
+	stats, err := a.m.GetStats()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(model.Stats{
-		Urls:  len(urls),
-		Users: len(users),
-	}); err != nil {
+	if err := json.NewEncoder(w).Encode(stats); err != nil {
 		a.WithField(
 			"error", err,
 		).Warn("Unable encode json")

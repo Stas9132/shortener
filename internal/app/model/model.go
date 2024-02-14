@@ -223,3 +223,38 @@ func (a *API) PostBatch(batch Batch) (int, error) {
 	}
 	return i, nil
 }
+
+// DeleteUserUrls - ...
+func (a *API) DeleteUserUrls(batch BatchDelete) (int, error) {
+	var i int
+	var err error
+	for i = range batch {
+		batch[i], err = url.JoinPath(config.C.BaseURL, batch[i])
+		if err != nil {
+			a.WithFields(map[string]interface{}{
+				"error": err,
+			}).Warn("url.JoinPath")
+			return i, err
+		}
+	}
+
+	go a.storage.Delete(batch...)
+	return i, nil
+}
+
+// DeleteUserUrls - ...
+func (a *API) GetStats() (Stats, error) {
+	users := make(map[string]struct{})
+	urls := make(map[string]struct{})
+
+	a.storage.RangeExt(func(key, value, user string) bool {
+		users[user] = struct{}{}
+		urls[value] = struct{}{}
+		return true
+	})
+
+	return Stats{
+		Urls:  len(urls),
+		Users: len(users),
+	}, nil
+}
