@@ -36,6 +36,7 @@ type ModelAPI interface {
 	GetUserURLs(ctx context.Context) (model.ListURLs, error)
 	GetRoot(sn string) (string, error)
 	GetPing() error
+	PostBatch(batch model.Batch) (int, error)
 }
 
 // StorageI - interface to storage
@@ -226,20 +227,14 @@ func (a APIT) PostBatch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	for i := range batch {
-		batch[i].ShortURL, err = url.JoinPath(
-			config.C.BaseURL,
-			getHash([]byte(batch[i].OriginalURL)))
-		if err != nil {
-			a.WithFields(map[string]interface{}{
-				"remoteAddr": r.RemoteAddr,
-				"uri":        r.RequestURI,
-				"error":      err,
-			}).Warn("url.JoinPath")
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		a.storage.Store(batch[i].ShortURL, batch[i].OriginalURL)
+
+	i, err := a.m.PostBatch(batch)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	for j := 0; j <= i; j++ {
 		batch[i].OriginalURL = ""
 	}
 

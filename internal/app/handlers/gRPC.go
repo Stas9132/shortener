@@ -65,6 +65,7 @@ func (a *GRPCAPI) Post(ctx context.Context, in *proto.OriginalURL) (*proto.Short
 
 // PostBatch - ...
 func (a *GRPCAPI) PostBatch(ctx context.Context, in *proto.Batch) (*proto.Batch, error) {
+
 	return nil, status.Errorf(codes.Unimplemented, "method PostBatch not implemented")
 }
 

@@ -204,3 +204,22 @@ func getHash(b []byte) string {
 	}
 	return hex.EncodeToString(d)
 }
+
+// PostBatch - ...
+func (a *API) PostBatch(batch Batch) (int, error) {
+	var err error
+	var i int
+	for i = range batch {
+		batch[i].ShortURL, err = url.JoinPath(
+			config.C.BaseURL,
+			getHash([]byte(batch[i].OriginalURL)))
+		if err != nil {
+			a.WithFields(map[string]interface{}{
+				"error": err,
+			}).Warn("url.JoinPath")
+			return i, err
+		}
+		a.storage.Store(batch[i].ShortURL, batch[i].OriginalURL)
+	}
+	return i, nil
+}
