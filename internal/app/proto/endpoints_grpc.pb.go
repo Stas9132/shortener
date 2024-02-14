@@ -28,7 +28,7 @@ type ApiClient interface {
 	GetUserURLs(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Batch, error)
 	DeleteUserURLs(ctx context.Context, in *Batch, opts ...grpc.CallOption) (*Empty, error)
 	Ping(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
-	GetStats(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
+	GetStats(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Stats, error)
 }
 
 type apiClient struct {
@@ -93,8 +93,8 @@ func (c *apiClient) Ping(ctx context.Context, in *Empty, opts ...grpc.CallOption
 	return out, nil
 }
 
-func (c *apiClient) GetStats(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error) {
-	out := new(Empty)
+func (c *apiClient) GetStats(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Stats, error) {
+	out := new(Stats)
 	err := c.cc.Invoke(ctx, "/proto.api/GetStats", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -112,7 +112,7 @@ type ApiServer interface {
 	GetUserURLs(context.Context, *Empty) (*Batch, error)
 	DeleteUserURLs(context.Context, *Batch) (*Empty, error)
 	Ping(context.Context, *Empty) (*Empty, error)
-	GetStats(context.Context, *Empty) (*Empty, error)
+	GetStats(context.Context, *Empty) (*Stats, error)
 	mustEmbedUnimplementedApiServer()
 }
 
@@ -138,7 +138,7 @@ func (UnimplementedApiServer) DeleteUserURLs(context.Context, *Batch) (*Empty, e
 func (UnimplementedApiServer) Ping(context.Context, *Empty) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
 }
-func (UnimplementedApiServer) GetStats(context.Context, *Empty) (*Empty, error) {
+func (UnimplementedApiServer) GetStats(context.Context, *Empty) (*Stats, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetStats not implemented")
 }
 func (UnimplementedApiServer) mustEmbedUnimplementedApiServer() {}

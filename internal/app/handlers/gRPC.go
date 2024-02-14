@@ -118,7 +118,18 @@ func (a *GRPCAPI) GetUserURLs(ctx context.Context, in *proto.Empty) (*proto.Batc
 
 // DeleteUserURLs - ...
 func (a *GRPCAPI) DeleteUserURLs(ctx context.Context, in *proto.Batch) (*proto.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteUserURLs not implemented")
+	_, err := a.m.DeleteUserUrls(func() model.BatchDelete {
+		var res []string
+		for _, record := range in.GetRecords() {
+			res = append(res, record.ShortUrl)
+		}
+		return res
+	}())
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
+
+	return &proto.Empty{}, nil
 }
 
 // Ping - ...
@@ -131,6 +142,14 @@ func (a *GRPCAPI) Ping(ctx context.Context, in *proto.Empty) (*proto.Empty, erro
 }
 
 // GetStats - ...
-func (a *GRPCAPI) GetStats(ctx context.Context, in *proto.Empty) (*proto.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetStats not implemented")
+func (a *GRPCAPI) GetStats(ctx context.Context, in *proto.Empty) (*proto.Stats, error) {
+	stats, err := a.m.GetStats()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+
+	return &proto.Stats{
+		URLs:  int32(stats.Urls),
+		Users: int32(stats.Users),
+	}, nil
 }

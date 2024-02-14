@@ -53,14 +53,13 @@ type StorageI interface {
 
 // APIT - struct with api handlers
 type APIT struct {
-	storage StorageI
 	logger.Logger
 	m ModelAPI
 }
 
 // NewAPI() - constructor
-func NewAPI(ctx context.Context, l logger.Logger, storage StorageI, model ModelAPI) APIT {
-	return APIT{storage: storage, Logger: l, m: model}
+func NewAPI(ctx context.Context, l logger.Logger, model ModelAPI) APIT {
+	return APIT{Logger: l, m: model}
 }
 
 // Default - api handler

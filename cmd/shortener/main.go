@@ -140,7 +140,7 @@ func main() {
 		}
 	}
 	m := model.NewAPI(l, st)
-	h := handlers.NewAPI(ctx, l, st, m)
+	h := handlers.NewAPI(ctx, l, m)
 	s := &http.Server{Addr: config.C.ServerAddress}
 	g := grpc.NewServer(getServerOptions()...)
 	go run(s, h)

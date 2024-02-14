@@ -11,7 +11,7 @@ service api {
   rpc GetUserURLs(Empty) returns(Batch);
   rpc DeleteUserURLs(Batch) returns(Empty);
   rpc Ping(Empty) returns(Empty);
-  rpc GetStats(Empty) returns(Empty);
+  rpc GetStats(Empty) returns(Stats);
 }
 
 message Empty{}
