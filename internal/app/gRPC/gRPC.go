@@ -1,8 +1,9 @@
-package handlers
+package gRPC
 
 import (
 	"context"
 	"errors"
+	"github.com/Stas9132/shortener/internal/app/handlers"
 	"github.com/Stas9132/shortener/internal/app/handlers/middleware"
 	"github.com/Stas9132/shortener/internal/app/model"
 	"github.com/Stas9132/shortener/internal/app/proto"
@@ -21,8 +22,19 @@ type GRPCAPI struct {
 	m ModelAPI
 }
 
+type ModelAPI interface {
+	PostPlainText(b []byte, issuer string) (string, error)
+	Post(request model.Request, issuer string) (*model.Response, error)
+	GetUserURLs(ctx context.Context) (model.ListURLs, error)
+	GetRoot(sn string) (string, error)
+	GetPing() error
+	PostBatch(batch model.Batch) (int, error)
+	DeleteUserUrls(batch model.BatchDelete) (int, error)
+	GetStats() (model.Stats, error)
+}
+
 // NewGRPCAPI - ...
-func NewGRPCAPI(l logger.Logger, m ModelAPI) *GRPCAPI {
+func NewGRPCAPI(l logger.Logger, m handlers.ModelAPI) *GRPCAPI {
 	return &GRPCAPI{Logger: l, m: m}
 }
 

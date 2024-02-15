@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Stas9132/shortener/config"
+	"github.com/Stas9132/shortener/internal/app/gRPC"
 	"github.com/Stas9132/shortener/internal/app/handlers"
 	"github.com/Stas9132/shortener/internal/app/handlers/middleware"
 	"github.com/Stas9132/shortener/internal/app/model"
@@ -109,7 +110,7 @@ func runGRPC(s *grpc.Server, l logger.Logger, m *model.API) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	proto.RegisterApiServer(s, handlers.NewGRPCAPI(l, m))
+	proto.RegisterApiServer(s, gRPC.NewGRPCAPI(l, m))
 	reflection.Register(s)
 
 	if err := s.Serve(listen); err != nil {
