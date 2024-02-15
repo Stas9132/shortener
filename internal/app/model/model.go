@@ -160,9 +160,9 @@ func (a *API) GetUserURLs(ctx context.Context) (ListURLs, error) {
 	})
 
 	switch middleware.GetIssuer(ctx).State {
-	case "NEW":
+	case middleware.AuthStateNew:
 		return nil, ErrUnauthorized
-	case "ESTABLISHED":
+	case middleware.AuthStateEstablished:
 		var tlu ListURLs
 		for _, u := range lu {
 			if u.User == middleware.GetIssuer(ctx).ID {

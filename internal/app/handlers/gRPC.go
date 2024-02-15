@@ -28,7 +28,7 @@ func NewGRPCAPI(l logger.Logger, m ModelAPI) *GRPCAPI {
 
 // Get - ...
 func (a *GRPCAPI) Get(ctx context.Context, in *proto.ShortUrl) (*proto.OriginalURL, error) {
-	s, err := a.m.GetRoot(in.GetURL())
+	s, err := a.m.GetRoot(in.GetUrl())
 	if err != nil {
 		if !errors.Is(err, model.ErrNotFound) {
 			a.WithFields(map[string]interface{}{
@@ -38,12 +38,12 @@ func (a *GRPCAPI) Get(ctx context.Context, in *proto.ShortUrl) (*proto.OriginalU
 		}
 		return nil, status.Error(codes.NotFound, "")
 	}
-	return &proto.OriginalURL{URL: s}, nil
+	return &proto.OriginalURL{Url: s}, nil
 }
 
 // Post - ...
 func (a *GRPCAPI) Post(ctx context.Context, in *proto.OriginalURL) (*proto.ShortUrl, error) {
-	u, err := url.Parse(in.GetURL())
+	u, err := url.Parse(in.GetUrl())
 	if err != nil {
 		a.WithFields(map[string]interface{}{
 			"error": err,
@@ -58,9 +58,9 @@ func (a *GRPCAPI) Post(ctx context.Context, in *proto.OriginalURL) (*proto.Short
 			}).Warn("model.Post error")
 			return nil, err
 		}
-		return &proto.ShortUrl{URL: response.Result}, status.Error(codes.AlreadyExists, err.Error())
+		return &proto.ShortUrl{Url: response.Result}, status.Error(codes.AlreadyExists, err.Error())
 	}
-	return &proto.ShortUrl{URL: response.Result}, nil
+	return &proto.ShortUrl{Url: response.Result}, nil
 }
 
 // PostBatch - ...
@@ -104,10 +104,10 @@ func (a *GRPCAPI) GetUserURLs(ctx context.Context, in *proto.Empty) (*proto.Batc
 		return nil, status.Error(codes.NotFound, "")
 	}
 
-	return &proto.Batch{Records: func() []*proto.URLRecord {
-		var res []*proto.URLRecord
+	return &proto.Batch{Records: func() []*proto.UrlRecord {
+		var res []*proto.UrlRecord
 		for _, t := range lu {
-			res = append(res, &proto.URLRecord{
+			res = append(res, &proto.UrlRecord{
 				OriginalURL: t.OriginalURL,
 				ShortUrl:    t.ShortURL,
 			})

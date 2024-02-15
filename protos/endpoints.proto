@@ -17,20 +17,20 @@ service api {
 message Empty{}
 
 message OriginalURL{
-  string URL = 1;
+  string Url = 1;
 }
 
 message ShortUrl{
-  string URL = 1;
+  string Url = 1;
 }
 
-message URLRecord{
+message UrlRecord{
   string OriginalURL = 1;
   string  ShortUrl = 2;
 }
 
 message Batch {
-  repeated URLRecord Records = 1;
+  repeated UrlRecord Records = 1;
 }
 
 message Stats {
