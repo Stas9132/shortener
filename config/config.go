@@ -19,6 +19,7 @@ type Config struct {
 	FileStoragePath   string `json:"file_storage_path"`
 	DatabaseDsn       string `json:"database_dsn"`
 	SecureConnection  bool   `json:"enable_https"`
+	TrustedSubnet     string `json:"trusted_subnet"`
 }
 
 // C - ...
@@ -30,6 +31,7 @@ var C = Config{
 	FileStoragePath:   "",
 	DatabaseDsn:       "",
 	SecureConnection:  false,
+	TrustedSubnet:     "0.0.0.0/0",
 }
 
 // Init - config initiator
@@ -59,6 +61,7 @@ func Init(ctx context.Context) {
 	flag.StringVar(&d.FileStoragePath, "f", "", "Storage file name")
 	flag.StringVar(&d.DatabaseDsn, "d", "", "Database dsn")
 	flag.BoolVar(&d.SecureConnection, "s", false, "")
+	flag.StringVar(&d.TrustedSubnet, "t", "0.0.0.0/0", "Trusted subnet")
 
 	flag.Parse()
 
@@ -91,5 +94,8 @@ func Init(ctx context.Context) {
 	}
 	if v, ok := os.LookupEnv("ENABLE_HTTPS"); ok && v == "YES" {
 		C.SecureConnection = true
+	}
+	if v, ok := os.LookupEnv("TRUSTED_SUBNET"); ok {
+		C.TrustedSubnet = v
 	}
 }
