@@ -2,7 +2,13 @@
 package model
 
 import (
+	"context"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"github.com/Stas9132/shortener/config"
+	"github.com/Stas9132/shortener/internal/app/handlers/middleware"
+	"github.com/Stas9132/shortener/internal/logger"
 	"net/url"
 	"strconv"
 )
@@ -57,3 +63,198 @@ type Batch []struct {
 
 // BatchDelete slice
 type BatchDelete []string
+
+// Stats struct
+type Stats struct {
+	Urls  int `json:"urls"`
+	Users int `json:"users"`
+}
+
+// Storage - ...
+type Storage interface {
+	Load(key string) (value string, ok bool)
+	Store(key, value string)
+	RangeExt(f func(key, value, user string) bool)
+	Range(f func(key, value string) bool)
+	LoadOrStore(key, value string) (actual string, loaded bool)
+	LoadOrStoreExt(key, value, user string) (actual string, loaded bool)
+	Delete(keys ...string)
+	Ping() error
+	Close() error
+}
+
+// ErrExist - ...
+var ErrExist = errors.New("already exist")
+
+// ErrUnauthorized - ...
+var ErrUnauthorized = errors.New("unauthorized")
+
+// ErrNotFound - ...
+var ErrNotFound = errors.New("not found")
+
+// API - ...
+type API struct {
+	logger.Logger
+	storage Storage
+}
+
+// NewAPI - ...
+func NewAPI(logger logger.Logger, storage Storage) *API {
+	return &API{Logger: logger, storage: storage}
+}
+
+// PostPlainText - api handler
+func (a *API) PostPlainText(b []byte, issuer string) (string, error) {
+	shortURL, e := url.JoinPath(
+		config.C.BaseURL,
+		getHash(b))
+	if e != nil {
+		a.WithFields(map[string]interface{}{
+			"error": e,
+		}).Warn("url.JoinPath error")
+		return "", e
+	}
+	_, exist := a.storage.LoadOrStoreExt(shortURL, string(b), issuer)
+
+	if exist {
+		return shortURL, ErrExist
+	}
+	return shortURL, nil
+}
+
+// Post - ...
+func (a *API) Post(request Request, issuer string) (*Response, error) {
+
+	shortURL, err := url.JoinPath(
+		config.C.BaseURL,
+		getHash([]byte(request.URL.String())))
+
+	if err != nil {
+		a.WithFields(map[string]interface{}{
+			"error": err,
+		}).Warn("url.JoinPath")
+		return nil, err
+	}
+
+	_, exist := a.storage.LoadOrStoreExt(shortURL, request.URL.String(), issuer)
+
+	response := &Response{}
+	response.Result = shortURL
+	if exist {
+		return response, ErrExist
+	}
+
+	return response, nil
+}
+
+// GetUserURLs - ...
+func (a *API) GetUserURLs(ctx context.Context) (ListURLs, error) {
+	var lu ListURLs
+	a.storage.RangeExt(func(key, value, user string) bool {
+		lu = append(lu, ListURLRecordT{
+			ShortURL:    key,
+			OriginalURL: value,
+			User:        user,
+		})
+		return true
+	})
+
+	switch middleware.GetIssuer(ctx).State {
+	case middleware.AuthStateNew:
+		return nil, ErrUnauthorized
+	case middleware.AuthStateEstablished:
+		var tlu ListURLs
+		for _, u := range lu {
+			if u.User == middleware.GetIssuer(ctx).ID {
+				tlu = append(tlu, u)
+			}
+		}
+		lu = tlu
+	}
+
+	return lu, nil
+}
+
+// GetRoot - ...
+func (a *API) GetRoot(sn string) (string, error) {
+	shortURL, e := url.JoinPath(config.C.BaseURL, sn)
+	if e != nil {
+		a.WithFields(map[string]interface{}{
+			"error": e,
+		}).Warn("url.JoinPath")
+		return "", e
+	}
+
+	s, ok := a.storage.Load(shortURL)
+	if !ok {
+		return "", ErrNotFound
+	}
+	return s, nil
+}
+
+func (a *API) GetPing() error {
+	return a.storage.Ping()
+}
+
+// getHash - ...
+func getHash(b []byte) string {
+	d := make([]byte, 4)
+	for i, v := range b {
+		d[i%4] += v
+	}
+	return hex.EncodeToString(d)
+}
+
+// PostBatch - ...
+func (a *API) PostBatch(batch Batch) (int, error) {
+	var err error
+	var i int
+	for i = range batch {
+		batch[i].ShortURL, err = url.JoinPath(
+			config.C.BaseURL,
+			getHash([]byte(batch[i].OriginalURL)))
+		if err != nil {
+			a.WithFields(map[string]interface{}{
+				"error": err,
+			}).Warn("url.JoinPath")
+			return i, err
+		}
+		a.storage.Store(batch[i].ShortURL, batch[i].OriginalURL)
+	}
+	return i, nil
+}
+
+// DeleteUserUrls - ...
+func (a *API) DeleteUserUrls(batch BatchDelete) (int, error) {
+	var i int
+	var err error
+	for i = range batch {
+		batch[i], err = url.JoinPath(config.C.BaseURL, batch[i])
+		if err != nil {
+			a.WithFields(map[string]interface{}{
+				"error": err,
+			}).Warn("url.JoinPath")
+			return i, err
+		}
+	}
+
+	go a.storage.Delete(batch...)
+	return i, nil
+}
+
+// DeleteUserUrls - ...
+func (a *API) GetStats() (Stats, error) {
+	users := make(map[string]struct{})
+	urls := make(map[string]struct{})
+
+	a.storage.RangeExt(func(key, value, user string) bool {
+		users[user] = struct{}{}
+		urls[value] = struct{}{}
+		return true
+	})
+
+	return Stats{
+		Urls:  len(urls),
+		Users: len(users),
+	}, nil
+}

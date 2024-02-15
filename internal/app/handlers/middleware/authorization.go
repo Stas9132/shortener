@@ -14,6 +14,12 @@ import (
 const key = "secret_key"
 
 // Issuer struct
+
+const (
+	AuthStateNew         = "NEW"
+	AuthStateEstablished = "ESTABLISHED"
+)
+
 type Issuer struct {
 	ID    string
 	State string
@@ -49,7 +55,7 @@ func Authorization(h http.Handler) http.Handler {
 		c, err := r.Cookie("auth")
 		iss := Issuer{
 			ID:    uuid.NewString(),
-			State: "NEW",
+			State: AuthStateNew,
 		}
 		if err == nil {
 			token, err2 := jwt.ParseWithClaims(c.Value, &jwt.MapClaims{}, func(token *jwt.Token) (interface{}, error) {
@@ -63,7 +69,7 @@ func Authorization(h http.Handler) http.Handler {
 					id, _ := (*claims)["iss"].(string)
 					iss = Issuer{
 						ID:    id,
-						State: "ESTABLISHED",
+						State: AuthStateEstablished,
 					}
 				}
 			}
