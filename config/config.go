@@ -55,7 +55,7 @@ func Init(ctx context.Context) {
 
 	flag.StringVar(&config, "c", "", "name of config")
 	flag.StringVar(&d.ServerAddress, "a", "localhost:8080", "Address of http server")
-	flag.StringVar(&d.ServerAddressGRPC, "g", "localhost:8081", "Address of grpc server")
+	flag.StringVar(&d.ServerAddressGRPC, "g", "localhost:8081", "Address of grpcHandler server")
 	flag.StringVar(&d.BaseURL, "b", "http://localhost:8080/", "Response prefix")
 	flag.StringVar(&d.LogLevel, "l", "info", "Set log level")
 	flag.StringVar(&d.FileStoragePath, "f", "", "Storage file name")
